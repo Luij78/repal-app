@@ -3,231 +3,208 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
+const sampleTasks = [
+  // Overdue tasks
+  { id: 1, title: 'Follow up with Susan Clark', description: 'Zillow lead from 4 months ago - try re-engaging with new listings', dueDate: '2026-01-18', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-10' },
+  { id: 2, title: 'Send CMA to Emily Davis', description: 'She requested market analysis for her Lake Mary townhome', dueDate: '2026-01-20', priority: 'medium', category: 'paperwork', completed: false, createdAt: '2026-01-15' },
+  // Due today
+  { id: 3, title: 'Confirm showing with Marcus Johnson', description: 'Call to confirm 2pm showing appointment', dueDate: '2026-01-24', priority: 'high', category: 'showing', completed: false, createdAt: '2026-01-20' },
+  { id: 4, title: 'Prepare listing presentation', description: 'Sarah Chen meeting - finalize CMA and marketing plan', dueDate: '2026-01-24', priority: 'high', category: 'paperwork', completed: false, createdAt: '2026-01-19' },
+  { id: 5, title: 'Call Raymond Green', description: '1031 exchange - need to discuss property options urgently', dueDate: '2026-01-24', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-21' },
+  // Upcoming tasks
+  { id: 6, title: 'Schedule VA loan consultation', description: 'Connect Frank & Helen King with VA lender', dueDate: '2026-01-26', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-20' },
+  { id: 7, title: 'Send investor newsletter', description: 'Monthly market update for investor leads', dueDate: '2026-01-25', priority: 'medium', category: 'marketing', completed: false, createdAt: '2026-01-15' },
+  { id: 8, title: 'Order closing gift', description: 'Williams family closing on Jan 30 - order gift basket', dueDate: '2026-01-27', priority: 'low', category: 'closing', completed: false, createdAt: '2026-01-18' },
+  { id: 9, title: 'Follow up with FSBO Carol Scott', description: 'She was ready to sign listing agreement - confirm appointment', dueDate: '2026-01-24', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-19' },
+  { id: 10, title: 'Research 55+ communities', description: 'Compile list for Robert & Linda Williams - Solivita, Del Webb, etc.', dueDate: '2026-01-26', priority: 'medium', category: 'general', completed: false, createdAt: '2026-01-20' },
+  { id: 11, title: 'Update MLS listings', description: 'Add new photos to active listings', dueDate: '2026-01-28', priority: 'medium', category: 'paperwork', completed: false, createdAt: '2026-01-22' },
+  { id: 12, title: 'Call Elizabeth Turner', description: 'Travel nurse - confirm pre-approval with Navy Federal', dueDate: '2026-01-25', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-20' },
+  // Completed tasks
+  { id: 13, title: 'Set up MLS search for Jennifer Thompson', description: 'Oviedo/Winter Springs, 4BR, good schools, under $320K', dueDate: '2026-01-19', priority: 'high', category: 'general', completed: true, completedAt: '2026-01-19', createdAt: '2026-01-17' },
+  { id: 14, title: 'Send pre-approval referral to Kevin Brown', description: 'Connected with mortgage lender', dueDate: '2026-01-20', priority: 'medium', category: 'followup', completed: true, completedAt: '2026-01-20', createdAt: '2026-01-18' },
+  { id: 15, title: 'Call institutional investor Raymond Green', description: 'Initial consultation about multi-family properties', dueDate: '2026-01-21', priority: 'high', category: 'followup', completed: true, completedAt: '2026-01-21', createdAt: '2026-01-20' }
+]
+
+const categories = [
+  { value: 'followup', label: '📞 Follow-up', color: '#4A9B7F' },
+  { value: 'showing', label: '🏠 Showing', color: '#6B8DD6' },
+  { value: 'paperwork', label: '📄 Paperwork', color: '#9B59B6' },
+  { value: 'marketing', label: '📢 Marketing', color: '#E67E22' },
+  { value: 'closing', label: '🔑 Closing', color: '#D4AF37' },
+  { value: 'general', label: '📌 General', color: '#666' }
+]
+
 export default function TaskerPage() {
   const [tasks, setTasks] = useState<any[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState<any>(null)
-  const [filter, setFilter] = useState('all')
-  const [formData, setFormData] = useState({ title: '', dueDate: '', priority: 'medium', category: 'general', notes: '' })
-
-  useEffect(() => {
-    const saved = localStorage.getItem('repal_tasks')
-    if (saved) setTasks(JSON.parse(saved))
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('repal_tasks', JSON.stringify(tasks))
-  }, [tasks])
-
-  const priorityColors: Record<string, string> = { high: '#C97B63', medium: '#D4AF37', low: '#4A9B7F' }
-  const categoryIcons: Record<string, string> = { general: '📋', lead: '👥', listing: '🏠', closing: '📝', marketing: '📢', admin: '⚙️' }
+  const [filterStatus, setFilterStatus] = useState('active')
+  const [filterCategory, setFilterCategory] = useState('all')
+  const [formData, setFormData] = useState({
+    title: '', description: '', dueDate: new Date().toISOString().split('T')[0], priority: 'medium', category: 'general'
+  })
 
   const today = new Date().toISOString().split('T')[0]
 
-  const saveTask = () => {
-    if (!formData.title) return alert('Please enter a task title')
-    if (editingTask) {
-      setTasks(tasks.map(t => t.id === editingTask.id ? { ...formData, id: editingTask.id, completed: editingTask.completed, createdAt: editingTask.createdAt } : t))
+  useEffect(() => {
+    const saved = localStorage.getItem('repal_tasks')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      setTasks(parsed.length > 0 ? parsed : sampleTasks)
     } else {
-      setTasks([...tasks, { ...formData, id: Date.now(), completed: false, createdAt: new Date().toISOString() }])
+      setTasks(sampleTasks)
     }
-    resetForm()
+  }, [])
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      localStorage.setItem('repal_tasks', JSON.stringify(tasks))
+    }
+  }, [tasks])
+
+  const getCategoryInfo = (cat: string) => categories.find(c => c.value === cat) || categories[categories.length - 1]
+
+  const getPriorityColor = (p: string) => {
+    if (p === 'high') return '#C97B63'
+    if (p === 'medium') return '#D4AF37'
+    return '#666'
   }
 
+  const filteredTasks = tasks.filter(task => {
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'active' && !task.completed) ||
+      (filterStatus === 'completed' && task.completed)
+    const matchesCategory = filterCategory === 'all' || task.category === filterCategory
+    return matchesStatus && matchesCategory
+  }).sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1
+    const priorityOrder = { high: 0, medium: 1, low: 2 }
+    if (priorityOrder[a.priority as keyof typeof priorityOrder] !== priorityOrder[b.priority as keyof typeof priorityOrder]) {
+      return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder]
+    }
+    return a.dueDate.localeCompare(b.dueDate)
+  })
+
+  const overdueCount = tasks.filter(t => !t.completed && t.dueDate < today).length
+  const todayCount = tasks.filter(t => !t.completed && t.dueDate === today).length
+
   const resetForm = () => {
-    setFormData({ title: '', dueDate: '', priority: 'medium', category: 'general', notes: '' })
-    setEditingTask(null)
+    setFormData({ title: '', description: '', dueDate: new Date().toISOString().split('T')[0], priority: 'medium', category: 'general' })
     setShowForm(false)
+    setEditingTask(null)
   }
 
   const openEditForm = (task: any) => {
     setEditingTask(task)
-    setFormData({ title: task.title, dueDate: task.dueDate || '', priority: task.priority, category: task.category, notes: task.notes || '' })
+    setFormData({
+      title: task.title || '',
+      description: task.description || '',
+      dueDate: task.dueDate || new Date().toISOString().split('T')[0],
+      priority: task.priority || 'medium',
+      category: task.category || 'general'
+    })
     setShowForm(true)
   }
 
+  const saveTask = () => {
+    if (editingTask) {
+      setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...formData } : t))
+    } else {
+      setTasks([...tasks, { ...formData, id: Date.now(), completed: false, createdAt: new Date().toISOString().split('T')[0] }])
+    }
+    resetForm()
+  }
+
   const toggleComplete = (id: number) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t))
+    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString().split('T')[0] : null } : t))
   }
 
   const deleteTask = (id: number) => {
     if (confirm('Delete this task?')) setTasks(tasks.filter(t => t.id !== id))
   }
 
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'all') return true
-    if (filter === 'pending') return !task.completed
-    if (filter === 'completed') return task.completed
-    if (filter === 'overdue') return !task.completed && task.dueDate && task.dueDate < today
-    if (filter === 'today') return task.dueDate === today
-    return true
-  })
-
-  const overdueTasks = tasks.filter(t => !t.completed && t.dueDate && t.dueDate < today)
-  const dueTodayTasks = tasks.filter(t => !t.completed && t.dueDate === today)
-  const pendingTasks = tasks.filter(t => !t.completed)
-
   return (
-    <div className="animate-fade-in pb-8">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="font-playfair text-2xl font-bold text-primary-400 mb-1">✓ Tasker</h1>
-          <p className="text-gray-400 text-sm">Manage your daily tasks and to-dos</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard" className="px-4 py-2 text-sm text-gray-400 hover:text-white">← Dashboard</Link>
-          <button onClick={() => { resetForm(); setShowForm(true) }} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">+ Add Task</button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-4 border border-dark-border text-center">
-          <span className="text-2xl font-bold text-[#27AE60]">{pendingTasks.length}</span>
-          <p className="text-xs text-gray-400 mt-1">Pending</p>
-        </div>
-        <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-4 border border-dark-border text-center">
-          <span className="text-2xl font-bold text-[#F39C12]">{dueTodayTasks.length}</span>
-          <p className="text-xs text-gray-400 mt-1">Due Today</p>
-        </div>
-        <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-4 border border-dark-border text-center">
-          <span className="text-2xl font-bold text-[#E74C3C]">{overdueTasks.length}</span>
-          <p className="text-xs text-gray-400 mt-1">Overdue</p>
-        </div>
-        <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-4 border border-dark-border text-center">
-          <span className="text-2xl font-bold text-gray-400">{tasks.filter(t => t.completed).length}</span>
-          <p className="text-xs text-gray-400 mt-1">Completed</p>
-        </div>
-      </div>
-
-      {/* Overdue Alert */}
-      {overdueTasks.length > 0 && (
-        <div className="mb-6 p-4 bg-[#E74C3C]/10 rounded-xl border border-[#E74C3C]/30">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">⚠️</span>
-            <h3 className="text-[#E74C3C] font-semibold">{overdueTasks.length} Overdue Task{overdueTasks.length > 1 ? 's' : ''}</h3>
+    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', color: '#fff', padding: '1rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link href="/dashboard" style={{ color: '#D4AF37', fontSize: '1.5rem' }}>←</Link>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>✅ Tasker</h1>
+            {overdueCount > 0 && <span style={{ backgroundColor: '#C97B63', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{overdueCount} overdue</span>}
+            {todayCount > 0 && <span style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{todayCount} today</span>}
           </div>
-          <div className="space-y-1">
-            {overdueTasks.slice(0, 3).map(task => (
-              <p key={task.id} className="text-sm text-gray-400">• {task.title}</p>
-            ))}
-          </div>
+          <button onClick={() => setShowForm(true)} style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Add Task</button>
         </div>
-      )}
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {['all', 'pending', 'today', 'overdue', 'completed'].map(f => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${filter === f ? 'bg-primary-500 text-dark-bg' : 'bg-dark-card text-gray-400 hover:text-white border border-dark-border'}`}>
-            {f === 'overdue' ? `Overdue (${overdueTasks.length})` : f}
-          </button>
-        ))}
-      </div>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
+            <option value="active">Active Tasks</option>
+            <option value="completed">Completed</option>
+            <option value="all">All Tasks</option>
+          </select>
+          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
+            <option value="all">All Categories</option>
+            {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+          </select>
+        </div>
 
-      {/* Task List */}
-      <div className="space-y-3">
-        {filteredTasks.length === 0 ? (
-          <div className="text-center py-16">
-            <span className="text-5xl mb-4 block">✓</span>
-            <p className="text-gray-400">{filter === 'completed' ? 'No completed tasks yet' : 'No tasks. Add your first!'}</p>
-          </div>
-        ) : (
-          filteredTasks.map(task => {
-            const isOverdue = !task.completed && task.dueDate && task.dueDate < today
-            const isDueToday = task.dueDate === today
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {filteredTasks.map(task => {
+            const catInfo = getCategoryInfo(task.category)
+            const isOverdue = !task.completed && task.dueDate < today
+            const isToday = task.dueDate === today
             
             return (
-              <div 
-                key={task.id} 
-                onClick={() => openEditForm(task)}
-                className={`group flex items-start gap-4 bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-4 border transition-all cursor-pointer hover:shadow-lg hover:shadow-primary-500/5 ${task.completed ? 'opacity-60 border-dark-border' : isOverdue ? 'border-[#E74C3C]/50 hover:border-[#E74C3C]' : 'border-dark-border hover:border-primary-500/30'}`}
-              >
-                {/* Checkbox */}
-                <button onClick={(e) => { e.stopPropagation(); toggleComplete(task.id) }} className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-colors ${task.completed ? 'bg-[#27AE60] border-[#27AE60] text-white' : 'border-gray-600 hover:border-primary-500'}`}>
-                  {task.completed && '✓'}
-                </button>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-lg">{categoryIcons[task.category] || '📋'}</span>
-                    <h3 className={`font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>{task.title}</h3>
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold text-white" style={{ backgroundColor: priorityColors[task.priority] }}>{task.priority}</span>
+              <div key={task.id} onClick={() => openEditForm(task)} className="group" style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: `1px solid ${isOverdue ? '#C97B63' : isToday ? '#D4AF37' : '#333'}`, display: 'flex', alignItems: 'center', gap: '1rem', opacity: task.completed ? 0.6 : 1, cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={(e) => { e.currentTarget.style.borderColor = isOverdue ? '#C97B63' : isToday ? '#D4AF37' : '#333'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <input type="checkbox" checked={task.completed} onChange={(e) => { e.stopPropagation(); toggleComplete(task.id) }} onClick={(e) => e.stopPropagation()} style={{ width: '1.5rem', height: '1.5rem', accentColor: '#D4AF37', cursor: 'pointer' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: '600', textDecoration: task.completed ? 'line-through' : 'none' }}>{task.title}</span>
+                    <span style={{ backgroundColor: getPriorityColor(task.priority), padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem', textTransform: 'uppercase' }}>{task.priority}</span>
+                    <span style={{ backgroundColor: catInfo.color, padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem' }}>{catInfo.label.split(' ')[0]}</span>
+                    {isOverdue && <span style={{ backgroundColor: '#C97B63', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem' }}>OVERDUE</span>}
+                    {isToday && !task.completed && <span style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem' }}>TODAY</span>}
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-400">
-                    {task.dueDate && (
-                      <span className={isOverdue ? 'text-[#E74C3C]' : isDueToday ? 'text-[#F39C12]' : ''}>
-                        📅 {new Date(task.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        {isOverdue && ' (Overdue)'}
-                        {isDueToday && ' (Today)'}
-                      </span>
-                    )}
-                    <span className="capitalize">{task.category}</span>
-                  </div>
-                  {task.notes && <p className="text-sm text-gray-500 mt-2">{task.notes}</p>}
+                  {task.description && <div style={{ fontSize: '0.875rem', color: '#999', marginTop: '0.25rem' }}>{task.description}</div>}
+                  <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>📅 Due: {new Date(task.dueDate).toLocaleDateString()}</div>
                 </div>
-
-                {/* Delete */}
-                <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id) }} className="text-xl text-gray-600 hover:text-[#E74C3C] transition-colors opacity-0 group-hover:opacity-100">🗑️</button>
+                <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id) }} className="delete-btn" style={{ backgroundColor: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.25rem', padding: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}>🗑️</button>
               </div>
             )
-          })
-        )}
-      </div>
+          })}
+        </div>
 
-      {/* Add/Edit Task Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-2xl p-6 max-w-lg w-full border border-dark-border">
-            <h2 className="font-playfair text-xl text-primary-400 mb-6">{editingTask ? '✏️ Edit Task' : '➕ Add New Task'}</h2>
-            
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Task Title *</label>
-                <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="What needs to be done?" className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Due Date</label>
-                  <input type="date" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Priority</label>
-                  <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white cursor-pointer">
+        {showForm && (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+            <div style={{ backgroundColor: '#2a2a2a', borderRadius: '1rem', padding: '1.5rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflow: 'auto' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{editingTask ? '✏️ Edit Task' : '➕ Add New Task'}</h2>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <input type="text" placeholder="Task Title *" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
+                <textarea placeholder="Description..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', resize: 'vertical' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  <input type="date" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                  <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
                     <option value="high">🔴 High</option>
                     <option value="medium">🟡 Medium</option>
                     <option value="low">🟢 Low</option>
                   </select>
+                  <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
+                    {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+                  </select>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Category</label>
-                <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white cursor-pointer">
-                  <option value="general">📋 General</option>
-                  <option value="lead">👥 Lead Follow-up</option>
-                  <option value="listing">🏠 Listing</option>
-                  <option value="closing">📝 Closing</option>
-                  <option value="marketing">📢 Marketing</option>
-                  <option value="admin">⚙️ Admin</option>
-                </select>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <button onClick={resetForm} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={saveTask} disabled={!formData.title} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: '#D4AF37', color: '#000', cursor: 'pointer', fontWeight: '600', opacity: formData.title ? 1 : 0.5 }}>{editingTask ? 'Save Changes' : 'Add Task'}</button>
               </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Notes</label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Additional details..." className="w-full min-h-[80px] px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500 resize-y" />
-              </div>
-            </div>
-
-            <div className="flex gap-4 justify-end">
-              <button onClick={resetForm} className="px-6 py-3 text-sm font-semibold text-gray-400 border border-dark-border rounded-lg hover:text-white transition-colors">Cancel</button>
-              <button onClick={saveTask} className="px-6 py-3 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">{editingTask ? 'Save Changes' : 'Add Task'}</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <style jsx>{`
+        .group:hover .delete-btn { opacity: 1 !important; }
+      `}</style>
     </div>
   )
 }

@@ -1,450 +1,269 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useUser } from '@clerk/nextjs'
 
-// Custom Calendar Date Picker Component
-function DatePickerField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const containerRef = useRef<HTMLDivElement>(null)
+const sampleTransactions = [
+  { id: 1, address: '789 Lake View Dr, Winter Park, FL', clientName: 'Robert & Linda Williams', clientType: 'buyer', clientEmail: 'rwilliams55@aol.com', clientPhone: '407-555-0103', price: 575000, contractDate: '2025-12-15', closingDate: '2026-01-30', commission: 3, status: 'closing', leadId: 3, milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: false, closing: false }, createdAt: '2025-12-15' },
+  { id: 2, address: '456 Dr Phillips Blvd, Orlando, FL', clientName: 'Sarah Chen', clientType: 'seller', clientEmail: 'sarah.chen@gmail.com', clientPhone: '407-555-0102', price: 485000, contractDate: '2026-01-10', closingDate: '2026-02-28', commission: 2.5, status: 'active', leadId: 2, milestones: { offer: true, contract: true, inspection: true, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }, createdAt: '2026-01-10' },
+  { id: 3, address: '123 Maitland Ave, Maitland, FL', clientName: 'Jennifer Thompson', clientType: 'buyer', clientEmail: 'jthompson@outlook.com', clientPhone: '407-555-0105', price: 315000, contractDate: '2026-01-18', closingDate: '2026-03-15', commission: 3, status: 'active', leadId: 5, milestones: { offer: true, contract: true, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }, createdAt: '2026-01-18' },
+  { id: 4, address: '567 Waterford Lakes Pkwy, Orlando, FL', clientName: 'Marcus Johnson', clientType: 'buyer', clientEmail: 'marcus.j@email.com', clientPhone: '407-555-0101', price: 425000, contractDate: '2025-10-01', closingDate: '2025-11-30', commission: 3, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-10-01' },
+  { id: 5, address: '234 Baldwin Park Blvd, Orlando, FL', clientName: 'Christopher Lee', clientType: 'buyer', clientEmail: 'chris.lee@techcorp.com', clientPhone: '407-555-0107', price: 550000, contractDate: '2025-08-15', closingDate: '2025-10-01', commission: 2.5, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-08-15' },
+  { id: 6, address: '890 Celebration Ave, Kissimmee, FL', clientName: 'Paul Nelson', clientType: 'buyer', clientEmail: 'pnelson@techstartup.com', clientPhone: '407-555-0130', price: 285000, contractDate: '2025-06-01', closingDate: '2025-07-15', commission: 3, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-06-01' },
+  { id: 7, address: '456 Lake Nona Blvd, Orlando, FL', clientName: 'Jessica Campbell', clientType: 'buyer', clientEmail: 'jcampbell@lawfirm.com', clientPhone: '407-555-0137', price: 625000, contractDate: '2025-09-01', closingDate: '2025-10-30', commission: 3, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-09-01' }
+]
 
-  useEffect(() => { if (value) setCurrentMonth(new Date(value + 'T00:00:00')) }, [])
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false) }
-    if (isOpen) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
-
-  const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-  const firstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay()
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-  const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-
-  const prevMonth = (e: React.MouseEvent) => { e.stopPropagation(); setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1)) }
-  const nextMonth = (e: React.MouseEvent) => { e.stopPropagation(); setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1)) }
-  const selectDate = (day: number) => { onChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toISOString().split('T')[0]); setIsOpen(false) }
-  const formatDisplayDate = (dateStr: string) => !dateStr ? 'Select date' : new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const todayStr = new Date().toISOString().split('T')[0]
-
-  const renderDays = () => {
-    const days = []
-    for (let i = 0; i < firstDayOfMonth(currentMonth); i++) days.push(<div key={`empty-${i}`} className="w-10 h-10" />)
-    for (let day = 1; day <= daysInMonth(currentMonth); day++) {
-      const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-      days.push(
-        <button key={day} type="button" onClick={(e) => { e.stopPropagation(); selectDate(day) }}
-          className={`w-10 h-10 rounded-xl text-sm font-medium transition-all flex items-center justify-center ${value === dateStr ? 'bg-gradient-to-br from-primary-500 to-[#B8960C] text-dark-bg shadow-lg' : dateStr === todayStr ? 'bg-primary-500/20 text-primary-400 border border-primary-500/50' : 'text-white hover:bg-white/10'}`}
-        >{day}</button>
-      )
-    }
-    return days
-  }
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">{label}</label>
-      <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-left flex items-center justify-between hover:border-primary-500/50">
-        <span className={value ? 'text-white' : 'text-gray-500'}>{formatDisplayDate(value)}</span><span className="text-xl">📅</span>
-      </button>
-      {isOpen && (
-        <div className="absolute z-[100] mt-2 left-0 right-0">
-          <div className="p-5 rounded-2xl border border-primary-500/20 shadow-2xl" style={{ background: 'linear-gradient(145deg, rgba(30,30,30,0.98) 0%, rgba(15,15,15,0.99) 100%)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <button type="button" onClick={prevMonth} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-white/70 text-lg">‹</button>
-              <span className="font-playfair text-white text-lg">{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</span>
-              <button type="button" onClick={nextMonth} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-white/70 text-lg">›</button>
-            </div>
-            <div className="grid grid-cols-7 gap-1 mb-2">{dayNames.map(d => <div key={d} className="w-10 h-8 flex items-center justify-center text-xs text-primary-400 font-semibold">{d}</div>)}</div>
-            <div className="grid grid-cols-7 gap-1">{renderDays()}</div>
-            <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
-              <button type="button" onClick={(e) => { e.stopPropagation(); onChange(todayStr); setIsOpen(false) }} className="flex-1 py-2.5 text-sm font-semibold bg-primary-500/20 text-primary-400 rounded-xl">Today</button>
-              <button type="button" onClick={(e) => { e.stopPropagation(); onChange(''); setIsOpen(false) }} className="flex-1 py-2.5 text-sm font-semibold bg-white/5 text-gray-400 rounded-xl">Clear</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface Transaction {
-  id: number
-  address: string
-  clientName: string
-  clientType: 'buyer' | 'seller'
-  status: string
-  price: string
-  commission: string
-  contractDate: string
-  closingDate: string
-  notes: string
-  leadId: string | null
-  createdAt: string
-  statusHistory: { status: string; date: string }[]
-}
-
-interface Lead { id: string; name: string; email: string; phone: string; status: string; type: string; notes: string; last_contact: string }
-interface AIAlert { id: string; leadId: string; leadName: string; message: string; suggestedStatus: string; timestamp: string; dismissed: boolean }
+const milestoneSteps = [
+  { key: 'offer', label: 'Offer', icon: '📝' },
+  { key: 'contract', label: 'Contract', icon: '📋' },
+  { key: 'inspection', label: 'Inspection', icon: '🔍' },
+  { key: 'appraisal', label: 'Appraisal', icon: '💰' },
+  { key: 'financing', label: 'Financing', icon: '🏦' },
+  { key: 'title', label: 'Title', icon: '📄' },
+  { key: 'walkthrough', label: 'Walk-through', icon: '🚶' },
+  { key: 'closing', label: 'Closing', icon: '🔑' }
+]
 
 export default function TransactionsPage() {
-  const { user } = useUser()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [leads, setLeads] = useState<Lead[]>([])
+  const [transactions, setTransactions] = useState<any[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [aiAlerts, setAIAlerts] = useState<AIAlert[]>([])
-  const [showAIPanel, setShowAIPanel] = useState(true)
-  
-  const emptyForm: { address: string; clientName: string; clientType: 'buyer' | 'seller'; status: string; price: string; commission: string; contractDate: string; closingDate: string; notes: string; leadId: string | null } = {
-    address: '', clientName: '', clientType: 'buyer', status: 'pending', price: '', commission: '3', contractDate: '', closingDate: '', notes: '', leadId: null
-  }
-  const [formData, setFormData] = useState(emptyForm)
+  const [editingTx, setEditingTx] = useState<any>(null)
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [formData, setFormData] = useState({
+    address: '', clientName: '', clientType: 'buyer', clientEmail: '', clientPhone: '',
+    price: '', contractDate: '', closingDate: '', commission: 3, status: 'pending',
+    milestones: { offer: false, contract: false, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }
+  })
 
-  const statusOptions = [
-    { value: 'pending', label: 'Pending', color: '#D4AF37', icon: '📋', step: 1 },
-    { value: 'under-contract', label: 'Under Contract', color: '#6B8DD6', icon: '📝', step: 2 },
-    { value: 'contingent', label: 'Contingent', color: '#9B59B6', icon: '⏳', step: 3 },
-    { value: 'inspection', label: 'Inspection', color: '#F39C12', icon: '🔍', step: 4 },
-    { value: 'appraisal', label: 'Appraisal', color: '#E67E22', icon: '💰', step: 5 },
-    { value: 'clear-to-close', label: 'Clear to Close', color: '#4ECDC4', icon: '✅', step: 6 },
-    { value: 'closed', label: 'Closed', color: '#4A9B7F', icon: '🎉', step: 7 },
-    { value: 'cancelled', label: 'Cancelled', color: '#E74C3C', icon: '❌', step: 0 }
-  ]
-
-  useEffect(() => { 
-    const savedTxn = localStorage.getItem('repal_transactions')
-    if (savedTxn) setTransactions(JSON.parse(savedTxn))
-    const savedAlerts = localStorage.getItem('repal_ai_alerts')
-    if (savedAlerts) setAIAlerts(JSON.parse(savedAlerts))
+  useEffect(() => {
+    const saved = localStorage.getItem('repal_transactions')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      setTransactions(parsed.length > 0 ? parsed : sampleTransactions)
+    } else {
+      setTransactions(sampleTransactions)
+    }
   }, [])
 
-  useEffect(() => { if (user) { const savedLeads = localStorage.getItem(`leads_${user.id}`); if (savedLeads) setLeads(JSON.parse(savedLeads)) } }, [user])
-  useEffect(() => { localStorage.setItem('repal_transactions', JSON.stringify(transactions)) }, [transactions])
-  useEffect(() => { localStorage.setItem('repal_ai_alerts', JSON.stringify(aiAlerts)) }, [aiAlerts])
-
-  // AI Agent
   useEffect(() => {
-    if (!user || leads.length === 0) return
-    const statusKeywords: Record<string, string[]> = {
-      'under-contract': ['under contract', 'accepted offer', 'offer accepted', 'signed contract', 'ratified'],
-      'contingent': ['contingent', 'contingency'],
-      'inspection': ['inspection scheduled', 'inspection complete', 'home inspection'],
-      'appraisal': ['appraisal scheduled', 'appraisal ordered', 'appraisal complete'],
-      'clear-to-close': ['clear to close', 'ctc', 'ready to close'],
-      'closed': ['closed', 'closing complete', 'keys handed', 'settled']
+    if (transactions.length > 0) {
+      localStorage.setItem('repal_transactions', JSON.stringify(transactions))
     }
-    const newAlerts: AIAlert[] = []
-    leads.forEach(lead => {
-      if (!lead.notes) return
-      const notesLower = lead.notes.toLowerCase()
-      const linkedTxn = transactions.find(t => t.leadId === lead.id)
-      Object.entries(statusKeywords).forEach(([status, keywords]) => {
-        keywords.forEach(keyword => {
-          if (notesLower.includes(keyword)) {
-            const existingAlert = aiAlerts.find(a => a.leadId === lead.id && a.suggestedStatus === status && !a.dismissed)
-            if (!existingAlert) {
-              if (linkedTxn) {
-                const currentStep = statusOptions.find(s => s.value === linkedTxn.status)?.step || 0
-                const suggestedStep = statusOptions.find(s => s.value === status)?.step || 0
-                if (suggestedStep > currentStep) {
-                  newAlerts.push({ id: `${lead.id}-${status}-${Date.now()}`, leadId: lead.id, leadName: lead.name, message: `Lead notes mention "${keyword}" - consider updating transaction status`, suggestedStatus: status, timestamp: new Date().toISOString(), dismissed: false })
-                }
-              } else {
-                newAlerts.push({ id: `${lead.id}-create-${Date.now()}`, leadId: lead.id, leadName: lead.name, message: `Lead notes mention "${keyword}" but no transaction exists`, suggestedStatus: status, timestamp: new Date().toISOString(), dismissed: false })
-              }
-            }
-          }
-        })
-      })
-    })
-    if (newAlerts.length > 0) setAIAlerts(prev => [...prev, ...newAlerts])
-  }, [leads, user])
+  }, [transactions])
 
-  const saveTransaction = () => {
-    if (!formData.address || !formData.clientName) return alert('Please enter address and client name')
-    if (editingTransaction) {
-      const statusChanged = editingTransaction.status !== formData.status
-      setTransactions(transactions.map(t => t.id === editingTransaction.id ? {
-        ...t, ...formData,
-        statusHistory: statusChanged ? [...(t.statusHistory || []), { status: formData.status, date: new Date().toISOString() }] : t.statusHistory
-      } : t))
-    } else {
-      const newTxn: Transaction = { ...formData, id: Date.now(), createdAt: new Date().toISOString(), statusHistory: [{ status: formData.status, date: new Date().toISOString() }] }
-      setTransactions([...transactions, newTxn])
-    }
-    setFormData(emptyForm); setEditingTransaction(null); setShowForm(false)
+  const getStatusColor = (s: string) => {
+    const colors: Record<string, string> = { pending: '#666', active: '#D4AF37', closing: '#6B8DD6', closed: '#4A9B7F', cancelled: '#C97B63' }
+    return colors[s] || '#666'
   }
 
-  // *** THIS IS THE KEY CHANGE: Opens edit form when clicking anywhere on the tile ***
-  const openEditForm = (txn: Transaction) => {
-    setFormData({ address: txn.address, clientName: txn.clientName, clientType: txn.clientType, status: txn.status, price: txn.price, commission: txn.commission, contractDate: txn.contractDate, closingDate: txn.closingDate, notes: txn.notes, leadId: txn.leadId })
-    setEditingTransaction(txn)
+  const filteredTransactions = transactions.filter(tx => {
+    return filterStatus === 'all' || tx.status === filterStatus
+  }).sort((a, b) => b.contractDate.localeCompare(a.contractDate))
+
+  const activeTransactions = transactions.filter(tx => ['active', 'closing', 'pending'].includes(tx.status))
+  const closedTransactions = transactions.filter(tx => tx.status === 'closed')
+  const ytdCommission = closedTransactions.filter(tx => tx.closingDate?.startsWith('2026')).reduce((sum, tx) => sum + (parseFloat(tx.price) * (tx.commission / 100)), 0)
+  const pendingCommission = activeTransactions.reduce((sum, tx) => sum + (parseFloat(tx.price) * (tx.commission / 100)), 0)
+
+  const resetForm = () => {
+    setFormData({
+      address: '', clientName: '', clientType: 'buyer', clientEmail: '', clientPhone: '',
+      price: '', contractDate: '', closingDate: '', commission: 3, status: 'pending',
+      milestones: { offer: false, contract: false, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }
+    })
+    setShowForm(false)
+    setEditingTx(null)
+  }
+
+  const openEditForm = (tx: any) => {
+    setEditingTx(tx)
+    setFormData({
+      address: tx.address || '',
+      clientName: tx.clientName || '',
+      clientType: tx.clientType || 'buyer',
+      clientEmail: tx.clientEmail || '',
+      clientPhone: tx.clientPhone || '',
+      price: tx.price?.toString() || '',
+      contractDate: tx.contractDate || '',
+      closingDate: tx.closingDate || '',
+      commission: tx.commission || 3,
+      status: tx.status || 'pending',
+      milestones: tx.milestones || { offer: false, contract: false, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }
+    })
     setShowForm(true)
   }
 
-  const updateStatus = (txnId: number, newStatus: string) => {
-    setTransactions(transactions.map(t => t.id === txnId ? { ...t, status: newStatus, statusHistory: [...(t.statusHistory || []), { status: newStatus, date: new Date().toISOString() }] } : t))
+  const saveTransaction = () => {
+    const txData = { ...formData, price: parseFloat(formData.price) || 0 }
+    if (editingTx) {
+      setTransactions(transactions.map(t => t.id === editingTx.id ? { ...txData, id: editingTx.id, createdAt: editingTx.createdAt } : t))
+    } else {
+      setTransactions([...transactions, { ...txData, id: Date.now(), createdAt: new Date().toISOString().split('T')[0] }])
+    }
+    resetForm()
   }
 
-  const deleteTransaction = (id: number) => { if (confirm('Delete this transaction?')) setTransactions(transactions.filter(t => t.id !== id)) }
-  const dismissAlert = (alertId: string) => { setAIAlerts(aiAlerts.map(a => a.id === alertId ? { ...a, dismissed: true } : a)) }
-  const applyAISuggestion = (alert: AIAlert) => { const linkedTxn = transactions.find(t => t.leadId === alert.leadId); if (linkedTxn) updateStatus(linkedTxn.id, alert.suggestedStatus); dismissAlert(alert.id) }
-  const linkLeadToTransaction = (leadId: string) => { const lead = leads.find(l => l.id === leadId); if (lead) { setFormData({ ...emptyForm, clientName: lead.name, clientType: lead.type === 'Seller' ? 'seller' : 'buyer', leadId: lead.id }); setShowForm(true) } }
-  const getLinkedLead = (leadId: string | null) => leadId ? leads.find(l => l.id === leadId) : null
+  const toggleMilestone = (txId: number, milestone: string) => {
+    setTransactions(transactions.map(tx => {
+      if (tx.id === txId) {
+        const newMilestones = { ...tx.milestones, [milestone]: !tx.milestones[milestone] }
+        const completedCount = Object.values(newMilestones).filter(Boolean).length
+        let newStatus = tx.status
+        if (completedCount === 8) newStatus = 'closed'
+        else if (completedCount >= 5) newStatus = 'closing'
+        else if (completedCount >= 1) newStatus = 'active'
+        return { ...tx, milestones: newMilestones, status: newStatus }
+      }
+      return tx
+    }))
+  }
 
-  const filteredTransactions = statusFilter === 'all' ? transactions : transactions.filter(t => t.status === statusFilter)
-  const activeDeals = transactions.filter(t => !['closed', 'cancelled'].includes(t.status)).length
-  const closedDeals = transactions.filter(t => t.status === 'closed').length
-  const totalVolume = transactions.filter(t => t.status === 'closed').reduce((sum, t) => sum + (parseFloat(t.price) || 0), 0)
-  const totalCommission = transactions.filter(t => t.status === 'closed').reduce((sum, t) => sum + ((parseFloat(t.price) || 0) * (parseFloat(t.commission) || 0) / 100), 0)
-  const activeAlerts = aiAlerts.filter(a => !a.dismissed)
+  const deleteTransaction = (id: number) => {
+    if (confirm('Delete this transaction?')) setTransactions(transactions.filter(t => t.id !== id))
+  }
+
+  const getProgress = (milestones: any) => {
+    if (!milestones) return 0
+    const completed = Object.values(milestones).filter(Boolean).length
+    return Math.round((completed / 8) * 100)
+  }
 
   return (
-    <div className="animate-fade-in pb-8">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="font-playfair text-2xl font-bold text-primary-400 mb-1">💼 Transactions</h1>
-          <p className="text-gray-400 text-sm">Track your deals from contract to close</p>
+    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', color: '#fff', padding: '1rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link href="/dashboard" style={{ color: '#D4AF37', fontSize: '1.5rem' }}>←</Link>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>🏠 Transaction Tracker</h1>
+            <span style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{activeTransactions.length} active</span>
+          </div>
+          <button onClick={() => setShowForm(true)} style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Add Transaction</button>
         </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard" className="px-4 py-2 text-sm text-gray-400 hover:text-white">← Dashboard</Link>
-          <button onClick={() => { setFormData(emptyForm); setEditingTransaction(null); setShowForm(true) }} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">+ Add Transaction</button>
-        </div>
-      </div>
 
-      {/* AI Agent Alerts Panel */}
-      {activeAlerts.length > 0 && (
-        <div className="mb-6">
-          <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4 cursor-pointer" onClick={() => setShowAIPanel(!showAIPanel)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🤖</span>
-                <div><h3 className="font-semibold text-white">AI Agent Detected Updates</h3><p className="text-sm text-gray-400">{activeAlerts.length} suggestion{activeAlerts.length > 1 ? 's' : ''} based on your lead notes</p></div>
-              </div>
-              <span className="text-gray-400">{showAIPanel ? '▲' : '▼'}</span>
-            </div>
-            {showAIPanel && (
-              <div className="mt-4 space-y-3">
-                {activeAlerts.map(alert => (
-                  <div key={alert.id} className="bg-dark-bg/50 rounded-lg p-4 flex items-start gap-4" onClick={(e) => e.stopPropagation()}>
-                    <span className="text-2xl">💡</span>
-                    <div className="flex-1">
-                      <p className="text-white font-medium">{alert.leadName}</p>
-                      <p className="text-sm text-gray-400 mt-1">{alert.message}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-gray-500">Suggested:</span>
-                        <span className="px-2 py-0.5 rounded text-xs font-semibold text-white" style={{ backgroundColor: statusOptions.find(s => s.value === alert.suggestedStatus)?.color }}>{statusOptions.find(s => s.value === alert.suggestedStatus)?.label}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {transactions.find(t => t.leadId === alert.leadId) ? (
-                        <button onClick={() => applyAISuggestion(alert)} className="px-3 py-1.5 text-xs font-semibold bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30">Apply</button>
-                      ) : (
-                        <button onClick={() => { linkLeadToTransaction(alert.leadId); dismissAlert(alert.id) }} className="px-3 py-1.5 text-xs font-semibold bg-primary-500/20 text-primary-400 rounded-lg hover:bg-primary-500/30">Create Transaction</button>
-                      )}
-                      <button onClick={() => dismissAlert(alert.id)} className="px-3 py-1.5 text-xs font-semibold bg-gray-500/20 text-gray-400 rounded-lg hover:bg-gray-500/30">Dismiss</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
+            <div style={{ fontSize: '0.875rem', color: '#999' }}>YTD Commission (2026)</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4A9B7F' }}>${ytdCommission.toLocaleString()}</div>
+          </div>
+          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
+            <div style={{ fontSize: '0.875rem', color: '#999' }}>Pending Commission</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#D4AF37' }}>${pendingCommission.toLocaleString()}</div>
+          </div>
+          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
+            <div style={{ fontSize: '0.875rem', color: '#999' }}>Closed This Year</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{closedTransactions.filter(tx => tx.closingDate?.startsWith('2026')).length}</div>
           </div>
         </div>
-      )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[{ label: 'Active Deals', value: activeDeals, color: '#6B8DD6' }, { label: 'Closed', value: closedDeals, color: '#4A9B7F' }, { label: 'Volume', value: '$' + (totalVolume >= 1000000 ? (totalVolume / 1000000).toFixed(1) + 'M' : (totalVolume / 1000).toFixed(0) + 'K'), color: '#D4AF37' }, { label: 'Commission', value: '$' + totalCommission.toLocaleString(undefined, { maximumFractionDigits: 0 }), color: '#4ECDC4' }].map(s => (
-          <div key={s.label} className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-4 border border-dark-border text-center">
-            <span className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</span>
-            <p className="text-xs text-gray-400 mt-1">{s.label}</p>
-          </div>
-        ))}
-      </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
+            <option value="all">All Transactions</option>
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
+            <option value="closing">Closing</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
 
-      {/* Status Filters */}
-      <div className="flex gap-2 mb-6 flex-wrap overflow-x-auto pb-2">
-        <button onClick={() => setStatusFilter('all')} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${statusFilter === 'all' ? 'bg-primary-500 text-dark-bg' : 'bg-dark-card text-gray-400 border border-dark-border'}`}>All ({transactions.length})</button>
-        {statusOptions.filter(opt => opt.value !== 'cancelled').map(opt => {
-          const count = transactions.filter(t => t.status === opt.value).length
-          return (
-            <button key={opt.value} onClick={() => setStatusFilter(opt.value)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-2 ${statusFilter === opt.value ? 'text-white' : 'bg-dark-card text-gray-400 border border-dark-border'}`} style={statusFilter === opt.value ? { backgroundColor: opt.color } : {}}>
-              <span>{opt.icon}</span> {opt.label} {count > 0 && <span className="text-xs opacity-70">({count})</span>}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Transactions List */}
-      <div className="space-y-4">
-        {filteredTransactions.length === 0 ? (
-          <div className="text-center py-16"><span className="text-5xl mb-4 block">💼</span><p className="text-gray-400">No transactions found.</p><p className="text-sm text-gray-500 mt-2">Add your first deal to start tracking</p></div>
-        ) : (
-          filteredTransactions.map(txn => {
-            const currentStatus = statusOptions.find(s => s.value === txn.status)
-            const linkedLead = getLinkedLead(txn.leadId)
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {filteredTransactions.map(tx => {
+            const progress = getProgress(tx.milestones)
+            const commission = (parseFloat(tx.price) * (tx.commission / 100))
             
             return (
-              // *** CLICK ANYWHERE ON TILE TO EDIT ***
-              <div 
-                key={txn.id} 
-                onClick={() => openEditForm(txn)}
-                className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl border border-dark-border hover:border-primary-500/30 transition-all overflow-hidden cursor-pointer hover:shadow-lg hover:shadow-primary-500/5"
-              >
-                {/* Status Progress Bar */}
-                <div className="h-1 bg-dark-bg">
-                  <div className="h-full transition-all duration-500" style={{ width: `${((currentStatus?.step || 0) / 7) * 100}%`, backgroundColor: currentStatus?.color }} />
+              <div key={tx.id} onClick={() => openEditForm(tx)} className="group" style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                      <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>{tx.address}</span>
+                      <span style={{ backgroundColor: getStatusColor(tx.status), padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', textTransform: 'uppercase' }}>{tx.status}</span>
+                      <span style={{ backgroundColor: tx.clientType === 'buyer' ? '#4A9B7F' : '#6B8DD6', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>{tx.clientType === 'buyer' ? '🏠 Buyer' : '💰 Seller'}</span>
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#999' }}>
+                      👤 {tx.clientName} • 💵 ${parseFloat(tx.price).toLocaleString()} • 📅 Close: {tx.closingDate ? new Date(tx.closingDate).toLocaleDateString() : 'TBD'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#4A9B7F', marginTop: '0.25rem' }}>
+                      Commission: ${commission.toLocaleString()} ({tx.commission}%)
+                    </div>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); deleteTransaction(tx.id) }} className="delete-btn" style={{ backgroundColor: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.25rem', padding: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}>🗑️</button>
                 </div>
-                
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-4 flex-wrap gap-2">
-                    <div>
-                      <h3 className="font-playfair text-lg text-white">{txn.address}</h3>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-gray-400">{txn.clientName}</span>
-                        <span className="px-2 py-0.5 rounded text-xs font-semibold text-white" style={{ backgroundColor: txn.clientType === 'buyer' ? '#4A9B7F' : '#6B8DD6' }}>{txn.clientType}</span>
-                        {linkedLead && (
-                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-purple-500/20 text-purple-400 flex items-center gap-1">🔗 Linked to Lead</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-full text-sm font-semibold text-white flex items-center gap-1.5" style={{ backgroundColor: currentStatus?.color }}>
-                        <span>{currentStatus?.icon}</span> {currentStatus?.label}
-                      </span>
-                      {/* Delete button - stopPropagation so it doesn't open edit */}
-                      <button onClick={(e) => { e.stopPropagation(); deleteTransaction(txn.id) }} className="p-2 text-gray-400 hover:text-[#E74C3C] transition-colors" title="Delete">🗑️</button>
-                    </div>
+
+                {/* Progress Bar */}
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#999', marginBottom: '0.25rem' }}>
+                    <span>Progress</span>
+                    <span>{progress}%</span>
                   </div>
-
-                  {/* Quick Status Update - stopPropagation so clicking status doesn't open edit */}
-                  <div className="mb-4">
-                    <p className="text-xs text-gray-500 mb-2">Quick Status Update:</p>
-                    <div className="flex gap-1 flex-wrap">
-                      {statusOptions.filter(s => s.value !== 'cancelled').map(opt => (
-                        <button 
-                          key={opt.value}
-                          onClick={(e) => { e.stopPropagation(); updateStatus(txn.id, opt.value) }}
-                          className={`px-2 py-1 text-xs rounded transition-all ${txn.status === opt.value ? 'text-white scale-110' : 'bg-dark-bg text-gray-500 hover:text-white'}`}
-                          style={txn.status === opt.value ? { backgroundColor: opt.color } : {}}
-                          title={opt.label}
-                        >
-                          {opt.icon}
-                        </button>
-                      ))}
-                    </div>
+                  <div style={{ height: '6px', backgroundColor: '#333', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${progress}%`, backgroundColor: progress === 100 ? '#4A9B7F' : '#D4AF37', transition: 'width 0.3s' }} />
                   </div>
-
-                  {/* Transaction Details */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div><span className="text-gray-500 block text-xs">Price</span><p className="text-white font-semibold">${parseFloat(txn.price || '0').toLocaleString()}</p></div>
-                    <div><span className="text-gray-500 block text-xs">Commission ({txn.commission}%)</span><p className="text-primary-400 font-semibold">${((parseFloat(txn.price) || 0) * (parseFloat(txn.commission) || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
-                    <div><span className="text-gray-500 block text-xs">Contract Date</span><p className="text-white">{txn.contractDate ? new Date(txn.contractDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}</p></div>
-                    <div><span className="text-gray-500 block text-xs">Closing Date</span><p className="text-white">{txn.closingDate ? new Date(txn.closingDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}</p></div>
-                  </div>
-
-                  {/* Notes Preview */}
-                  {txn.notes && (
-                    <div className="mt-4 pt-4 border-t border-dark-border">
-                      <p className="text-xs text-gray-500 mb-1">Notes</p>
-                      <p className="text-sm text-gray-400 line-clamp-2">{txn.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Status History */}
-                  {txn.statusHistory && txn.statusHistory.length > 1 && (
-                    <div className="mt-4 pt-4 border-t border-dark-border">
-                      <p className="text-xs text-gray-500 mb-2">Status History</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {txn.statusHistory.map((h, idx) => {
-                          const status = statusOptions.find(s => s.value === h.status)
-                          return (
-                            <div key={idx} className="flex items-center gap-1 text-xs text-gray-500">
-                              <span style={{ color: status?.color }}>{status?.icon}</span>
-                              <span>{new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                              {idx < txn.statusHistory.length - 1 && <span className="text-gray-600">→</span>}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              </div>
-            )
-          })
-        )}
-      </div>
 
-      {/* Add/Edit Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-2xl p-6 max-w-2xl w-full border border-dark-border my-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-playfair text-xl text-primary-400 mb-6">{editingTransaction ? '✏️ Edit Transaction' : '➕ Add Transaction'}</h2>
-            
-            {/* Link to Lead */}
-            <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/30 rounded-xl">
-              <label className="block text-xs text-purple-400 mb-2 uppercase tracking-wider">🔗 Link to Existing Lead (Optional)</label>
-              <select value={formData.leadId || ''} onChange={(e) => { const leadId = e.target.value; const lead = leads.find(l => l.id === leadId); if (lead) { setFormData({ ...formData, leadId, clientName: lead.name, clientType: lead.type === 'Seller' ? 'seller' : 'buyer' }) } else { setFormData({ ...formData, leadId: null }) } }} className="w-full px-4 py-3 bg-[#0D0D0D] border border-purple-500/30 rounded-lg text-white cursor-pointer focus:border-purple-500">
-                <option value="">No linked lead</option>
-                {leads.map(lead => <option key={lead.id} value={lead.id}>{lead.name} ({lead.type || 'Lead'}) - {lead.status}</option>)}
-              </select>
-              {formData.leadId && <p className="text-xs text-purple-400 mt-2">✓ Transaction will sync with this lead's activity</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="col-span-2">
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Property Address *</label>
-                <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St, City, State" className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Client Name *</label>
-                <input type="text" value={formData.clientName} onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} placeholder="John Smith" className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Client Type</label>
-                <select value={formData.clientType} onChange={(e) => setFormData({ ...formData, clientType: e.target.value as 'buyer' | 'seller' })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white cursor-pointer">
-                  <option value="buyer">Buyer</option>
-                  <option value="seller">Seller</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Sale Price</label>
-                <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder="450000" className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Commission %</label>
-                <input type="number" step="0.1" value={formData.commission} onChange={(e) => setFormData({ ...formData, commission: e.target.value })} placeholder="3" className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Status</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {statusOptions.map(opt => (
-                    <button key={opt.value} type="button" onClick={() => setFormData({ ...formData, status: opt.value })} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all ${formData.status === opt.value ? 'text-white ring-2 ring-white/30' : 'text-gray-400 bg-dark-bg hover:text-white'}`} style={formData.status === opt.value ? { backgroundColor: opt.color } : {}}>
-                      <span>{opt.icon}</span> {opt.label}
+                {/* Milestone Indicators */}
+                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+                  {milestoneSteps.map(step => (
+                    <button key={step.key} onClick={() => toggleMilestone(tx.id, step.key)} style={{ backgroundColor: tx.milestones?.[step.key] ? '#4A9B7F' : '#333', border: 'none', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.625rem', cursor: 'pointer', color: '#fff', transition: 'background-color 0.2s' }} title={step.label}>
+                      {step.icon} {step.label}
                     </button>
                   ))}
                 </div>
               </div>
-              <DatePickerField label="Contract Date" value={formData.contractDate} onChange={(v) => setFormData({ ...formData, contractDate: v })} />
-              <DatePickerField label="Closing Date" value={formData.closingDate} onChange={(v) => setFormData({ ...formData, closingDate: v })} />
-              <div className="col-span-2">
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Notes</label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} placeholder="Add any relevant notes..." className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500 resize-none" />
+            )
+          })}
+        </div>
+
+        {showForm && (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+            <div style={{ backgroundColor: '#2a2a2a', borderRadius: '1rem', padding: '1.5rem', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{editingTx ? '✏️ Edit Transaction' : '➕ Add Transaction'}</h2>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <input type="text" placeholder="Property Address *" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <input type="text" placeholder="Client Name *" value={formData.clientName} onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                  <select value={formData.clientType} onChange={(e) => setFormData({ ...formData, clientType: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
+                    <option value="buyer">Buyer</option>
+                    <option value="seller">Seller</option>
+                  </select>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <input type="email" placeholder="Client Email" value={formData.clientEmail} onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                  <input type="tel" placeholder="Client Phone" value={formData.clientPhone} onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  <input type="number" placeholder="Price *" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                  <input type="number" step="0.1" placeholder="Commission %" value={formData.commission} onChange={(e) => setFormData({ ...formData, commission: parseFloat(e.target.value) || 3 })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
+                    <option value="pending">Pending</option>
+                    <option value="active">Active</option>
+                    <option value="closing">Closing</option>
+                    <option value="closed">Closed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: '#999' }}>Contract Date</label>
+                    <input type="date" value={formData.contractDate} onChange={(e) => setFormData({ ...formData, contractDate: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: '#999' }}>Closing Date</label>
+                    <input type="date" value={formData.closingDate} onChange={(e) => setFormData({ ...formData, closingDate: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <button onClick={resetForm} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={saveTransaction} disabled={!formData.address || !formData.clientName || !formData.price} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: '#D4AF37', color: '#000', cursor: 'pointer', fontWeight: '600', opacity: formData.address && formData.clientName && formData.price ? 1 : 0.5 }}>{editingTx ? 'Save Changes' : 'Add Transaction'}</button>
               </div>
             </div>
-            
-            <div className="flex gap-3 justify-end mt-6">
-              <button onClick={() => { setShowForm(false); setEditingTransaction(null); setFormData(emptyForm) }} className="px-5 py-2.5 text-sm font-semibold bg-dark-bg text-gray-400 rounded-lg hover:bg-dark-border transition-colors">Cancel</button>
-              <button onClick={saveTransaction} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">{editingTransaction ? 'Save Changes' : 'Add Transaction'}</button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <style jsx>{`
+        .group:hover .delete-btn { opacity: 1 !important; }
+      `}</style>
     </div>
   )
 }

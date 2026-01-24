@@ -3,39 +3,44 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
+const sampleTemplates = [
+  { id: 1, name: 'New Lead Welcome', category: 'text', subject: '', content: 'Hi {name}! Thanks for reaching out about finding your perfect home. I\'m excited to help you on this journey! When would be a good time to chat about what you\'re looking for? I\'m available for a quick call today or tomorrow. - {agent}', tags: ['first-contact', 'buyer'] },
+  { id: 2, name: 'Showing Follow-Up', category: 'text', subject: '', content: 'Hi {name}! Great meeting you today at {property}. I loved showing you around! What were your thoughts on the home? Any questions I can answer? Let me know if you\'d like to schedule another viewing or see similar properties. - {agent}', tags: ['showing', 'follow-up'] },
+  { id: 3, name: 'Listing Presentation Confirmation', category: 'email', subject: 'Looking forward to meeting you!', content: 'Hi {name},\n\nI\'m excited to meet with you on {date} to discuss selling your home at {property}.\n\nI\'ll bring a comprehensive market analysis and marketing plan tailored specifically for your property.\n\nPlease have the following ready if possible:\n- Any recent repairs or upgrades\n- Original purchase documents\n- HOA information (if applicable)\n\nSee you soon!\n\nBest,\n{agent}', tags: ['listing', 'seller'] },
+  { id: 4, name: 'Price Reduction Discussion', category: 'email', subject: 'Market Update for {property}', content: 'Hi {name},\n\nI wanted to touch base about your listing at {property}. We\'ve had good showing activity, but the feedback suggests buyers are comparing to other homes in a slightly lower price range.\n\nBased on recent market data and comparable sales, I\'d like to discuss a strategic price adjustment to increase buyer interest.\n\nCan we schedule a quick call to review the numbers together?\n\nBest,\n{agent}', tags: ['listing', 'seller', 'price'] },
+  { id: 5, name: 'Offer Submitted', category: 'text', subject: '', content: 'Great news {name}! 🎉 I just submitted your offer on {property}. The listing agent confirmed receipt and said the sellers will review tonight. I\'ll call you as soon as I hear back. Fingers crossed! - {agent}', tags: ['offer', 'buyer'] },
+  { id: 6, name: 'Under Contract Celebration', category: 'email', subject: 'Congratulations - You\'re Under Contract! 🎉', content: 'Hi {name},\n\nWONDERFUL NEWS! Your offer on {property} has been accepted!\n\nHere\'s what happens next:\n\n📅 Important Dates:\n- Inspection: Schedule within 10 days\n- Appraisal: Lender will order this week\n- Closing: {closing_date}\n\n📋 Action Items:\n1. Send earnest money deposit to title company\n2. Schedule home inspection\n3. Forward homeowners insurance quote to lender\n\nI\'ll be with you every step of the way. Congratulations on this exciting milestone!\n\nBest,\n{agent}', tags: ['contract', 'buyer', 'milestone'] },
+  { id: 7, name: 'Closing Reminder', category: 'text', subject: '', content: 'Hi {name}! 🔑 Just a reminder - closing is scheduled for {date} at {time}. Don\'t forget to bring your ID and any remaining funds (cashier\'s check or wire). Can\'t wait to hand you those keys! - {agent}', tags: ['closing', 'reminder'] },
+  { id: 8, name: 'Anniversary Check-In', category: 'email', subject: 'Happy Home Anniversary! 🏠', content: 'Hi {name},\n\nHappy Home Anniversary! 🎉 Can you believe it\'s been a year since you got the keys to {property}?\n\nI hope you\'ve been enjoying your home and creating wonderful memories there.\n\nIf you ever need recommendations for home services, have questions about the market, or know anyone looking to buy or sell, I\'m always here to help!\n\nWishing you many more happy years in your home.\n\nWarmly,\n{agent}', tags: ['anniversary', 'past-client', 'nurture'] },
+  { id: 9, name: 'Market Update', category: 'email', subject: 'Your {area} Market Update', content: 'Hi {name},\n\nHere\'s what\'s happening in the {area} real estate market:\n\n📊 This Month\'s Stats:\n- Median Price: ${median_price}\n- Days on Market: {dom} days\n- Active Listings: {active}\n\n🏠 What This Means for You:\n{market_insight}\n\nInterested in knowing your home\'s current value? I\'d be happy to provide a complimentary market analysis.\n\nBest,\n{agent}', tags: ['market-update', 'nurture'] },
+  { id: 10, name: '55+ Community Info', category: 'email', subject: 'Active Adult Communities in Florida', content: 'Hi {name},\n\nThank you for your interest in 55+ communities! Here are some top options I recommend:\n\n🏌️ Golf Communities:\n- Solivita - Poinciana\n- Del Webb - Daytona Beach\n\n🎾 Active Lifestyle:\n- On Top of the World - Ocala\n- The Villages\n\nI specialize in helping buyers find the perfect active adult community. Would you like to schedule tours?\n\nBest,\n{agent}', tags: ['55+', 'buyer', 'community'] },
+  { id: 11, name: 'Investor Property Analysis', category: 'email', subject: 'Investment Property Analysis: {property}', content: 'Hi {name},\n\nHere\'s the analysis for {property}:\n\n💰 Financials:\n- Purchase Price: ${price}\n- Estimated Rent: ${rent}/month\n- Cap Rate: {cap_rate}%\n- Cash-on-Cash: {coc}%\n\n📊 Comparable Rents in Area: ${comp_rent}/month\n\nI can provide more detailed numbers including expenses, insurance estimates, and property management costs.\n\nWant to discuss this opportunity?\n\nBest,\n{agent}', tags: ['investor', 'analysis'] },
+  { id: 12, name: 'Referral Thank You', category: 'text', subject: '', content: 'Hi {name}! I just wanted to say THANK YOU for referring {referral_name} to me! 🙏 Referrals from clients like you mean the world to me. I promise to take great care of them! - {agent}', tags: ['referral', 'thank-you'] }
+]
+
+const categories = [
+  { value: 'text', label: '💬 Text/SMS', color: '#4A9B7F' },
+  { value: 'email', label: '📧 Email', color: '#6B8DD6' },
+  { value: 'script', label: '📞 Phone Script', color: '#9B59B6' }
+]
+
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<any[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<any>(null)
   const [filterCategory, setFilterCategory] = useState('all')
-  const [formData, setFormData] = useState({ title: '', category: 'follow-up', content: '' })
-
-  const categories = [
-    { id: 'follow-up', name: 'Follow Up', icon: '📞' },
-    { id: 'greeting', name: 'Greeting', icon: '👋' },
-    { id: 'listing', name: 'Listing', icon: '🏠' },
-    { id: 'showing', name: 'Showing', icon: '🔑' },
-    { id: 'offer', name: 'Offer', icon: '📝' },
-    { id: 'closing', name: 'Closing', icon: '🎉' },
-    { id: 'marketing', name: 'Marketing', icon: '📢' },
-    { id: 'other', name: 'Other', icon: '📋' }
-  ]
-
-  const defaultTemplates = [
-    { id: 1, title: 'New Lead Greeting', category: 'greeting', content: 'Hi [Name]! Thanks for reaching out about real estate. I\'d love to learn more about what you\'re looking for. When would be a good time for a quick call?' },
-    { id: 2, title: 'Showing Follow Up', category: 'showing', content: 'Hi [Name]! I hope you enjoyed the showing today. What did you think of the property? I\'d love to hear your thoughts and answer any questions you might have.' },
-    { id: 3, title: 'Listing Appointment Confirm', category: 'listing', content: 'Hi [Name]! Just confirming our listing appointment for [Date] at [Time]. Looking forward to discussing how we can get your home sold quickly and for top dollar!' },
-    { id: 4, title: 'Offer Submitted', category: 'offer', content: 'Great news! I just submitted your offer on [Address]. I\'ll keep you updated as soon as I hear back from the listing agent. Fingers crossed! 🤞' },
-    { id: 5, title: 'Weekly Market Update', category: 'marketing', content: 'Hi [Name]! Quick market update: [X] new listings hit the market this week in your target area. Would you like me to send you the details on any that catch your eye?' },
-  ]
+  const [searchTerm, setSearchTerm] = useState('')
+  const [formData, setFormData] = useState({
+    name: '', category: 'text', subject: '', content: '', tags: ''
+  })
 
   useEffect(() => {
     const saved = localStorage.getItem('repal_templates')
     if (saved) {
-      setTemplates(JSON.parse(saved))
+      const parsed = JSON.parse(saved)
+      setTemplates(parsed.length > 0 ? parsed : sampleTemplates)
     } else {
-      setTemplates(defaultTemplates)
-      localStorage.setItem('repal_templates', JSON.stringify(defaultTemplates))
+      setTemplates(sampleTemplates)
     }
   }, [])
 
@@ -45,12 +50,43 @@ export default function TemplatesPage() {
     }
   }, [templates])
 
+  const getCategoryInfo = (cat: string) => categories.find(c => c.value === cat) || categories[0]
+
+  const filteredTemplates = templates.filter(t => {
+    const matchesCategory = filterCategory === 'all' || t.category === filterCategory
+    const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      t.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    return matchesCategory && matchesSearch
+  })
+
+  const resetForm = () => {
+    setFormData({ name: '', category: 'text', subject: '', content: '', tags: '' })
+    setShowForm(false)
+    setEditingTemplate(null)
+  }
+
+  const openEditForm = (template: any) => {
+    setEditingTemplate(template)
+    setFormData({
+      name: template.name || '',
+      category: template.category || 'text',
+      subject: template.subject || '',
+      content: template.content || '',
+      tags: template.tags?.join(', ') || ''
+    })
+    setShowForm(true)
+  }
+
   const saveTemplate = () => {
-    if (!formData.title || !formData.content) return alert('Please enter title and content')
+    const templateData = {
+      ...formData,
+      tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
+    }
     if (editingTemplate) {
-      setTemplates(templates.map(t => t.id === editingTemplate.id ? { ...formData, id: editingTemplate.id } : t))
+      setTemplates(templates.map(t => t.id === editingTemplate.id ? { ...templateData, id: editingTemplate.id } : t))
     } else {
-      setTemplates([...templates, { ...formData, id: Date.now() }])
+      setTemplates([...templates, { ...templateData, id: Date.now() }])
     }
     resetForm()
   }
@@ -59,121 +95,89 @@ export default function TemplatesPage() {
     if (confirm('Delete this template?')) setTemplates(templates.filter(t => t.id !== id))
   }
 
-  const resetForm = () => {
-    setFormData({ title: '', category: 'follow-up', content: '' })
-    setEditingTemplate(null)
-    setShowForm(false)
-  }
-
-  const openEditForm = (template: any) => {
-    setEditingTemplate(template)
-    setFormData(template)
-    setShowForm(true)
-  }
-
-  const copyToClipboard = (content: string) => {
-    navigator.clipboard.writeText(content)
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
     alert('Copied to clipboard!')
   }
 
-  const filteredTemplates = filterCategory === 'all' ? templates : templates.filter(t => t.category === filterCategory)
-
-  const getCategoryIcon = (catId: string) => categories.find(c => c.id === catId)?.icon || '📋'
-
   return (
-    <div className="animate-fade-in pb-8">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="font-playfair text-2xl font-bold text-primary-400 mb-1">⚡ Quick Reply Templates</h1>
-          <p className="text-gray-400 text-sm">Save time with pre-written message templates</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard" className="px-4 py-2 text-sm text-gray-400 hover:text-white">← Dashboard</Link>
-          <button onClick={() => { resetForm(); setShowForm(true) }} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">+ Add Template</button>
-        </div>
-      </div>
-
-      {/* Category Filter */}
-      <div className="flex gap-2 mb-6 flex-wrap overflow-x-auto pb-2">
-        <button onClick={() => setFilterCategory('all')} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${filterCategory === 'all' ? 'bg-primary-500 text-dark-bg' : 'bg-dark-card text-gray-400 hover:text-white border border-dark-border'}`}>
-          All
-        </button>
-        {categories.map(cat => (
-          <button key={cat.id} onClick={() => setFilterCategory(cat.id)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${filterCategory === cat.id ? 'bg-primary-500 text-dark-bg' : 'bg-dark-card text-gray-400 hover:text-white border border-dark-border'}`}>
-            {cat.icon} {cat.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Templates Grid */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        {filteredTemplates.length === 0 ? (
-          <div className="col-span-2 text-center py-16">
-            <span className="text-5xl mb-4 block">⚡</span>
-            <p className="text-gray-400">No templates yet. Create your first quick reply!</p>
+    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', color: '#fff', padding: '1rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link href="/dashboard" style={{ color: '#D4AF37', fontSize: '1.5rem' }}>←</Link>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>📝 Quick Reply Templates</h1>
+            <span style={{ backgroundColor: '#333', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{templates.length} templates</span>
           </div>
-        ) : (
-          filteredTemplates.map(template => (
-            <div 
-              key={template.id} 
-              onClick={() => openEditForm(template)}
-              className="group bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-5 border border-dark-border hover:border-primary-500/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary-500/5"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{getCategoryIcon(template.category)}</span>
-                  <h3 className="font-medium text-white">{template.title}</h3>
+          <button onClick={() => setShowForm(true)} style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Create Template</button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <input type="text" placeholder="Search templates..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }} />
+          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
+            <option value="all">All Types</option>
+            {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+          </select>
+        </div>
+
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {filteredTemplates.map(template => {
+            const catInfo = getCategoryInfo(template.category)
+            return (
+              <div key={template.id} onClick={() => openEditForm(template)} className="group" style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: '600' }}>{template.name}</span>
+                      <span style={{ backgroundColor: catInfo.color, padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>{catInfo.label}</span>
+                    </div>
+                    {template.subject && <div style={{ fontSize: '0.875rem', color: '#D4AF37', marginBottom: '0.25rem' }}>Subject: {template.subject}</div>}
+                    <div style={{ fontSize: '0.875rem', color: '#999', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{template.content}</div>
+                    {template.tags?.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                        {template.tags.map((tag: string) => (
+                          <span key={tag} style={{ backgroundColor: '#333', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem', color: '#999' }}>#{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem' }}>
+                    <button onClick={(e) => { e.stopPropagation(); copyToClipboard(template.content) }} style={{ backgroundColor: '#4A9B7F', border: 'none', color: '#fff', cursor: 'pointer', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem' }}>📋 Copy</button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteTemplate(template.id) }} className="delete-btn" style={{ backgroundColor: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.25rem', padding: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}>🗑️</button>
+                  </div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); deleteTemplate(template.id) }} className="text-gray-500 hover:text-[#E74C3C] transition-colors opacity-0 group-hover:opacity-100">🗑️</button>
               </div>
-              <p className="text-sm text-gray-400 leading-relaxed mb-4 line-clamp-3">{template.content}</p>
-              <div className="flex gap-2">
-                <button onClick={(e) => { e.stopPropagation(); copyToClipboard(template.content) }} className="flex-1 py-2 bg-[#4ECDC4]/20 text-[#4ECDC4] rounded-lg text-sm font-semibold hover:bg-[#4ECDC4]/30 transition-colors">
-                  📋 Copy
-                </button>
-                <button onClick={(e) => e.stopPropagation()} className="flex-1 py-2 bg-[#6B8DD6]/20 text-[#6B8DD6] rounded-lg text-sm font-semibold hover:bg-[#6B8DD6]/30 transition-colors">
-                  💬 Use
-                </button>
+            )
+          })}
+        </div>
+
+        {showForm && (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+            <div style={{ backgroundColor: '#2a2a2a', borderRadius: '1rem', padding: '1.5rem', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{editingTemplate ? '✏️ Edit Template' : '➕ Create Template'}</h2>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <input type="text" placeholder="Template Name *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
+                <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
+                  {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+                </select>
+                {formData.category === 'email' && (
+                  <input type="text" placeholder="Subject Line" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                )}
+                <textarea placeholder="Template Content *&#10;&#10;Use variables like {name}, {property}, {agent}, {date}" value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} rows={8} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', resize: 'vertical', fontFamily: 'inherit' }} />
+                <input type="text" placeholder="Tags (comma separated)" value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <button onClick={resetForm} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={saveTemplate} disabled={!formData.name || !formData.content} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: '#D4AF37', color: '#000', cursor: 'pointer', fontWeight: '600', opacity: formData.name && formData.content ? 1 : 0.5 }}>{editingTemplate ? 'Save Changes' : 'Create Template'}</button>
               </div>
             </div>
-          ))
+          </div>
         )}
       </div>
 
-      {/* Add/Edit Template Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-2xl p-6 max-w-lg w-full border border-dark-border">
-            <h2 className="font-playfair text-xl text-primary-400 mb-6">{editingTemplate ? '✏️ Edit Template' : '➕ Create Template'}</h2>
-            
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Template Name *</label>
-                <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="e.g., Follow Up After Showing" className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Category</label>
-                <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white cursor-pointer">
-                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Message Content *</label>
-                <textarea value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} placeholder="Use [Name], [Address], [Date], [Time] as placeholders..." className="w-full min-h-[150px] px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500 resize-y" />
-                <p className="text-xs text-gray-500 mt-2">💡 Tip: Use [brackets] for placeholders like [Name], [Address], [Date]</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 justify-end">
-              <button onClick={resetForm} className="px-6 py-3 text-sm font-semibold text-gray-400 border border-dark-border rounded-lg hover:text-white transition-colors">Cancel</button>
-              <button onClick={saveTemplate} className="px-6 py-3 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">{editingTemplate ? 'Save Changes' : 'Save Template'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <style jsx>{`
+        .group:hover .delete-btn { opacity: 1 !important; }
+      `}</style>
     </div>
   )
 }

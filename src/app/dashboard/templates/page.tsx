@@ -65,6 +65,12 @@ export default function TemplatesPage() {
     setShowForm(false)
   }
 
+  const openEditForm = (template: any) => {
+    setEditingTemplate(template)
+    setFormData(template)
+    setShowForm(true)
+  }
+
   const copyToClipboard = (content: string) => {
     navigator.clipboard.writeText(content)
     alert('Copied to clipboard!')
@@ -84,7 +90,7 @@ export default function TemplatesPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard" className="px-4 py-2 text-sm text-gray-400 hover:text-white">← Dashboard</Link>
-          <button onClick={() => setShowForm(true)} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">+ Add Template</button>
+          <button onClick={() => { resetForm(); setShowForm(true) }} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">+ Add Template</button>
         </div>
       </div>
 
@@ -109,23 +115,24 @@ export default function TemplatesPage() {
           </div>
         ) : (
           filteredTemplates.map(template => (
-            <div key={template.id} className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-5 border border-dark-border hover:border-primary-500/30 transition-all">
+            <div 
+              key={template.id} 
+              onClick={() => openEditForm(template)}
+              className="group bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-5 border border-dark-border hover:border-primary-500/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary-500/5"
+            >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{getCategoryIcon(template.category)}</span>
                   <h3 className="font-medium text-white">{template.title}</h3>
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => { setEditingTemplate(template); setFormData(template); setShowForm(true) }} className="text-gray-500 hover:text-white transition-colors">✏️</button>
-                  <button onClick={() => deleteTemplate(template.id)} className="text-gray-500 hover:text-[#E74C3C] transition-colors">🗑️</button>
-                </div>
+                <button onClick={(e) => { e.stopPropagation(); deleteTemplate(template.id) }} className="text-gray-500 hover:text-[#E74C3C] transition-colors opacity-0 group-hover:opacity-100">🗑️</button>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed mb-4 line-clamp-3">{template.content}</p>
               <div className="flex gap-2">
-                <button onClick={() => copyToClipboard(template.content)} className="flex-1 py-2 bg-[#4ECDC4]/20 text-[#4ECDC4] rounded-lg text-sm font-semibold hover:bg-[#4ECDC4]/30 transition-colors">
+                <button onClick={(e) => { e.stopPropagation(); copyToClipboard(template.content) }} className="flex-1 py-2 bg-[#4ECDC4]/20 text-[#4ECDC4] rounded-lg text-sm font-semibold hover:bg-[#4ECDC4]/30 transition-colors">
                   📋 Copy
                 </button>
-                <button className="flex-1 py-2 bg-[#6B8DD6]/20 text-[#6B8DD6] rounded-lg text-sm font-semibold hover:bg-[#6B8DD6]/30 transition-colors">
+                <button onClick={(e) => e.stopPropagation()} className="flex-1 py-2 bg-[#6B8DD6]/20 text-[#6B8DD6] rounded-lg text-sm font-semibold hover:bg-[#6B8DD6]/30 transition-colors">
                   💬 Use
                 </button>
               </div>
@@ -138,7 +145,7 @@ export default function TemplatesPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-2xl p-6 max-w-lg w-full border border-dark-border">
-            <h2 className="font-playfair text-xl text-primary-400 mb-6">{editingTemplate ? 'Edit Template' : 'Create Template'}</h2>
+            <h2 className="font-playfair text-xl text-primary-400 mb-6">{editingTemplate ? '✏️ Edit Template' : '➕ Create Template'}</h2>
             
             <div className="space-y-4 mb-6">
               <div>
@@ -162,7 +169,7 @@ export default function TemplatesPage() {
 
             <div className="flex gap-4 justify-end">
               <button onClick={resetForm} className="px-6 py-3 text-sm font-semibold text-gray-400 border border-dark-border rounded-lg hover:text-white transition-colors">Cancel</button>
-              <button onClick={saveTemplate} className="px-6 py-3 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">Save Template</button>
+              <button onClick={saveTemplate} className="px-6 py-3 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">{editingTemplate ? 'Save Changes' : 'Save Template'}</button>
             </div>
           </div>
         </div>

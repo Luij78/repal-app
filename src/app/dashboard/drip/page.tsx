@@ -6,6 +6,7 @@ import Link from 'next/link'
 export default function DripPage() {
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [editingCampaign, setEditingCampaign] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: '', type: 'buyer', emails: [{ day: 1, subject: '', content: '' }]
   })
@@ -55,9 +56,24 @@ export default function DripPage() {
 
   const saveCampaign = () => {
     if (!formData.name) return alert('Please enter campaign name')
-    setCampaigns([...campaigns, { ...formData, id: Date.now(), active: false, leads: 0 }])
+    if (editingCampaign) {
+      setCampaigns(campaigns.map(c => c.id === editingCampaign.id ? { ...formData, id: editingCampaign.id, active: editingCampaign.active, leads: editingCampaign.leads } : c))
+    } else {
+      setCampaigns([...campaigns, { ...formData, id: Date.now(), active: false, leads: 0 }])
+    }
+    resetForm()
+  }
+
+  const resetForm = () => {
     setFormData({ name: '', type: 'buyer', emails: [{ day: 1, subject: '', content: '' }] })
+    setEditingCampaign(null)
     setShowForm(false)
+  }
+
+  const openEditForm = (campaign: any) => {
+    setEditingCampaign(campaign)
+    setFormData({ name: campaign.name, type: campaign.type, emails: campaign.emails || [{ day: 1, subject: '', content: '' }] })
+    setShowForm(true)
   }
 
   const toggleCampaign = (id: number) => {
@@ -98,7 +114,7 @@ export default function DripPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard" className="px-4 py-2 text-sm text-gray-400 hover:text-white">← Dashboard</Link>
-          <button onClick={() => setShowForm(true)} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">+ Create Campaign</button>
+          <button onClick={() => { resetForm(); setShowForm(true) }} className="px-5 py-2.5 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">+ Create Campaign</button>
         </div>
       </div>
 
@@ -127,7 +143,11 @@ export default function DripPage() {
           </div>
         ) : (
           campaigns.map(campaign => (
-            <div key={campaign.id} className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-5 border border-dark-border">
+            <div 
+              key={campaign.id} 
+              onClick={() => openEditForm(campaign)}
+              className="group bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-xl p-5 border border-dark-border hover:border-primary-500/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-primary-500/5"
+            >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{getTypeIcon(campaign.type)}</span>
@@ -138,12 +158,12 @@ export default function DripPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => toggleCampaign(campaign.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleCampaign(campaign.id) }}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${campaign.active ? 'bg-[#4A9B7F] text-white' : 'bg-dark-border text-gray-400'}`}
                   >
                     {campaign.active ? '✓ Active' : 'Paused'}
                   </button>
-                  <button onClick={() => deleteCampaign(campaign.id)} className="text-gray-500 hover:text-[#E74C3C] transition-colors">🗑️</button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteCampaign(campaign.id) }} className="text-gray-500 hover:text-[#E74C3C] transition-colors opacity-0 group-hover:opacity-100">🗑️</button>
                 </div>
               </div>
 
@@ -179,11 +199,11 @@ export default function DripPage() {
         </div>
       </div>
 
-      {/* Create Campaign Modal */}
+      {/* Create/Edit Campaign Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto">
           <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-2xl p-6 max-w-2xl w-full border border-dark-border my-8">
-            <h2 className="font-playfair text-xl text-primary-400 mb-6">Create Drip Campaign</h2>
+            <h2 className="font-playfair text-xl text-primary-400 mb-6">{editingCampaign ? '✏️ Edit Campaign' : '➕ Create Drip Campaign'}</h2>
             
             <div className="space-y-4 mb-6">
               <div className="grid grid-cols-2 gap-4">
@@ -227,8 +247,8 @@ export default function DripPage() {
             </div>
 
             <div className="flex gap-4 justify-end">
-              <button onClick={() => { setShowForm(false); setFormData({ name: '', type: 'buyer', emails: [{ day: 1, subject: '', content: '' }] }) }} className="px-6 py-3 text-sm font-semibold text-gray-400 border border-dark-border rounded-lg hover:text-white transition-colors">Cancel</button>
-              <button onClick={saveCampaign} className="px-6 py-3 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">Create Campaign</button>
+              <button onClick={resetForm} className="px-6 py-3 text-sm font-semibold text-gray-400 border border-dark-border rounded-lg hover:text-white transition-colors">Cancel</button>
+              <button onClick={saveCampaign} className="px-6 py-3 text-sm font-semibold bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-400 transition-colors">{editingCampaign ? 'Save Changes' : 'Create Campaign'}</button>
             </div>
           </div>
         </div>

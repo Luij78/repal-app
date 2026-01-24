@@ -46,6 +46,28 @@ interface DigestInsight {
   link?: string
 }
 
+// Tools & Calculators tiles (from HTML prototype)
+const defaultTiles = [
+  { id: 'tasker', title: 'Tasker', icon: '✓', desc: 'Track tasks & to-dos', color: '#27AE60', href: '/dashboard/tasker' },
+  { id: 'investment', title: 'Investment Calculator', icon: '📊', desc: 'Analyze ROI, cash flow & cap rates', color: '#D4AF37', href: '/dashboard/investment-calculator' },
+  { id: 'mortgage', title: 'Mortgage Calculator', icon: '🏦', desc: 'Monthly payment estimator', color: '#2563EB', href: '/dashboard/mortgage-calculator' },
+  { id: 'expenses', title: 'Expense Tracker', icon: '🧾', desc: 'Track tax-deductible expenses', color: '#E74C3C', href: '/dashboard/expenses' },
+  { id: 'mileage', title: 'Mileage Tracker', icon: '🚗', desc: 'Log business miles driven', color: '#3498DB', href: '/dashboard/mileage' },
+  { id: 'coach', title: 'Coach', icon: '🎯', desc: 'Your path to real estate success', color: '#8B5CF6', href: '/dashboard/coach' },
+  { id: 'leads', title: 'Lead Manager', icon: '👥', desc: 'Organize contacts & notes', color: '#4A9B7F', href: '/dashboard/leads' },
+  { id: 'appointments', title: 'Appointments', icon: '📅', desc: 'Schedule & track meetings', color: '#6B8DD6', href: '/dashboard/appointments' },
+  { id: 'openhouse', title: 'Open House Sign-In', icon: '🏡', desc: 'Digital sign-in & QR codes', color: '#FF6B6B', href: '/dashboard/openhouse' },
+  { id: 'transactions', title: 'Transaction Tracker', icon: '📋', desc: 'Manage deals to closing', color: '#45B7D1', href: '/dashboard/transactions' },
+  { id: 'buyercosts', title: 'Buyer Closing Costs', icon: '💵', desc: 'Estimate cash to close', color: '#96CEB4', href: '/dashboard/buyercosts' },
+  { id: 'dates', title: 'Important Dates', icon: '🎂', desc: 'Birthdays & anniversaries', color: '#FF85A2', href: '/dashboard/dates' },
+  { id: 'seller', title: 'Seller Net Sheet', icon: '🏠', desc: 'Calculate seller proceeds', color: '#C97B63', href: '/dashboard/seller' },
+  { id: 'commercial', title: 'Triple Net (NNN)', icon: '🏢', desc: 'Commercial lease calculator', color: '#9B59B6', href: '/dashboard/commercial' },
+  { id: 'templates', title: 'Quick Replies', icon: '⚡', desc: 'One-tap message templates', color: '#F39C12', href: '/dashboard/templates' },
+  { id: 'drip', title: 'Drip Campaign', icon: '📧', desc: 'AI newsletters for cold leads', color: '#4ECDC4', href: '/dashboard/drip' },
+  { id: 'integrations', title: 'Lead Sources', icon: '🔗', desc: 'IDX/MLS, Zillow, Realtor.com & more', color: '#9B59B6', href: '/dashboard/integrations' },
+  { id: 'profile', title: 'My Profile', icon: '👤', desc: 'Signature & business card', color: '#E91E63', href: '/dashboard/profile' },
+]
+
 export default function DashboardPage() {
   const { user } = useUser()
   const [leads, setLeads] = useState<Lead[]>([])
@@ -54,10 +76,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [digestExpanded, setDigestExpanded] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [tileOrder, setTileOrder] = useState<string[]>([])
 
   useEffect(() => {
     if (user) {
       loadData()
+    }
+    
+    // Load tile order
+    const savedOrder = localStorage.getItem('repal_tile_order')
+    if (savedOrder) {
+      setTileOrder(JSON.parse(savedOrder))
+    } else {
+      setTileOrder(defaultTiles.map(t => t.id))
     }
     
     // Update time every minute
@@ -199,178 +230,101 @@ export default function DashboardPage() {
       }
     }
 
-    // Opportunity: Waiting leads (could be rate-sensitive)
-    const waitingLeads = getLeadsByStatus('waiting')
-    if (waitingLeads.length > 0) {
+    // Opportunity: New leads this week
+    const thisWeek = new Date()
+    thisWeek.setDate(thisWeek.getDate() - 7)
+    const newLeads = leads.filter(l => new Date(l.created_at) >= thisWeek)
+    if (newLeads.length > 0) {
       insights.push({
         type: 'opportunity',
-        icon: '💡',
-        title: `${waitingLeads.length} Lead${waitingLeads.length > 1 ? 's' : ''} Waiting`,
-        description: 'These leads may be waiting for better rates or conditions - check in with market updates',
-        action: 'Send Newsletter',
-        link: '/dashboard/drip'
-      })
-    }
-
-    // Opportunity: Cold leads for drip campaign
-    const coldLeads = getLeadsByStatus('cold')
-    if (coldLeads.length >= 5) {
-      insights.push({
-        type: 'opportunity',
-        icon: '📧',
-        title: `${coldLeads.length} Cold Leads to Re-engage`,
-        description: 'A market update newsletter could warm up these leads',
-        action: 'Create Newsletter',
-        link: '/dashboard/drip'
-      })
-    }
-
-    // Suggestion: Investors in database
-    const investors = leads.filter(l => l.type === 'investor')
-    if (investors.length > 0) {
-      const recentInvestors = investors.filter(l => daysSinceContact(l.last_contact) >= 21)
-      if (recentInvestors.length > 0) {
-        insights.push({
-          type: 'suggestion',
-          icon: '💼',
-          title: `${recentInvestors.length} Investor${recentInvestors.length > 1 ? 's' : ''} to Update`,
-          description: 'Share new investment opportunities or market analysis',
-          action: 'View Investors',
-          link: '/dashboard/leads'
-        })
-      }
-    }
-
-    // Suggestion: 55+ buyers
-    const seniorBuyers = leads.filter(l => l.type === 'buyer_55')
-    if (seniorBuyers.length > 0) {
-      const needsContact = seniorBuyers.filter(l => daysSinceContact(l.last_contact) >= 14)
-      if (needsContact.length > 0) {
-        insights.push({
-          type: 'suggestion',
-          icon: '🏡',
-          title: `${needsContact.length} 55+ Buyer${needsContact.length > 1 ? 's' : ''} to Check In`,
-          description: 'Share new community options or incentives',
-          action: 'View Leads',
-          link: '/dashboard/leads'
-        })
-      }
-    }
-
-    // If no appointments this week, suggest prospecting
-    const upcomingApts = getUpcomingAppointments()
-    if (upcomingApts.length === 0 && leads.length > 0) {
-      insights.push({
-        type: 'suggestion',
-        icon: '🎯',
-        title: 'No Appointments This Week',
-        description: 'Time to reach out and book some showings!',
-        action: 'View Leads',
+        icon: '🌟',
+        title: `${newLeads.length} New Lead${newLeads.length > 1 ? 's' : ''} This Week`,
+        description: 'Strike while the iron is hot!',
+        action: 'View New Leads',
         link: '/dashboard/leads'
       })
     }
 
-    // Milestone alerts
-    leads.forEach(lead => {
-      const days = daysSinceContact(lead.created_at)
-      if (days === 90 || days === 89 || days === 91) {
-        insights.push({
-          type: 'alert',
-          icon: '⏰',
-          title: `90-Day Mark: ${lead.name}`,
-          description: "This lead's 90-day anniversary is here - critical follow-up time",
-          action: 'Contact Now',
-          link: '/dashboard/leads'
-        })
-      }
-    })
-
-    // Limit to top 6 insights
-    return insights.slice(0, 6)
+    return insights
   }
 
   const insights = generateInsights()
 
-  // Quick stats
+  // Calculate stats
   const stats = {
     totalLeads: leads.length,
-    activeLeads: leads.filter(l => !['closed', 'lost'].includes(l.status)).length,
-    todayAppointments: getTodayAppointments().length,
-    pendingTasks: tasks.filter(t => t.status !== 'completed').length,
+    activeLeads: leads.filter(l => l.status !== 'closed' && l.status !== 'lost').length,
     hotLeads: leads.filter(l => l.status === 'hot').length,
     coldLeads: leads.filter(l => l.status === 'cold').length,
+    todayAppointments: getTodayAppointments().length,
+    pendingTasks: tasks.filter(t => t.status !== 'completed').length
   }
+
+  // Get ordered tiles
+  const orderedTiles = tileOrder
+    .map(id => defaultTiles.find(t => t.id === id))
+    .filter(Boolean) as typeof defaultTiles
+  
+  // Add any new tiles not in saved order
+  defaultTiles.forEach(t => {
+    if (!tileOrder.includes(t.id)) {
+      orderedTiles.push(t)
+    }
+  })
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your dashboard...</p>
+        </div>
       </div>
     )
   }
 
-  // Calculate urgent alerts count
-  const getUrgentAlertsCount = () => {
-    let count = 0
-    leads.forEach(lead => {
-      const days = daysSinceContact(lead.last_contact)
-      if (days >= 30 && lead.status !== 'closed' && lead.status !== 'lost') count++
-      if (lead.status === 'hot' && days >= 3) count++
-    })
-    return count
-  }
-
-  const urgentAlerts = getUrgentAlertsCount()
-
   return (
-    <div className="animate-fade-in space-y-4 sm:space-y-6">
+    <div className="space-y-6 pb-8 animate-fade-in">
       {/* AI Daily Digest */}
-      <div className="card bg-gradient-to-br from-primary-500/10 via-blue-500/5 to-purple-500/10 border-primary-500/30">
-        <div 
-          className="cursor-pointer"
-          onClick={() => setDigestExpanded(!digestExpanded)}
-        >
-          {/* Top row - greeting and expand button */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                <span className="text-lg sm:text-xl">🤖</span>
-              </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-white">
-                  {getGreeting()}, {user?.firstName || 'there'}!
-                </h2>
-                <p className="text-gray-400 text-xs sm:text-sm">
-                  {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                </p>
-              </div>
+      <div 
+        className="card bg-gradient-to-br from-dark-card to-dark-bg border-primary-500/30 cursor-pointer"
+        onClick={() => setDigestExpanded(!digestExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center">
+              <span className="text-2xl">🤖</span>
             </div>
-            <span className="text-gray-400 text-sm">{digestExpanded ? '▲' : '▼'}</span>
+            <div>
+              <h2 className="font-playfair text-lg text-primary-400">AI Daily Digest</h2>
+              <p className="text-sm text-gray-400">
+                {getGreeting()}, {user?.firstName || 'Agent'}! Here's your daily briefing.
+              </p>
+            </div>
           </div>
-          
-          {/* AI feature buttons - responsive wrap */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2">
             <Link 
               href="/dashboard/alerts"
               onClick={(e) => e.stopPropagation()}
-              className="relative flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-3 py-2 rounded-full transition-all"
+              className="flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-2 py-1 rounded-full transition-all"
             >
               <span>🔔</span>
-              <span className="text-primary-400">Alerts</span>
-              {urgentAlerts > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {urgentAlerts}
+              <span className="text-primary-400">AI Alerts</span>
+              {(getOverdueTasks().length + getLeadsNeedingFollowup().length) > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full px-1.5">
+                  {getOverdueTasks().length + getLeadsNeedingFollowup().length}
                 </span>
               )}
             </Link>
             <Link 
               href="/dashboard/smart-tasks"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 px-3 py-2 rounded-full transition-all"
+              className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 px-2 py-1 rounded-full transition-all"
             >
               <span>🧠</span>
               <span className="text-green-400">Smart Tasks</span>
             </Link>
+            <span className="text-gray-400">{digestExpanded ? '▲' : '▼'}</span>
           </div>
         </div>
 
@@ -479,7 +433,7 @@ export default function DashboardPage() {
           <p className="font-semibold text-white">Appointments</p>
           <p className="text-xs text-gray-400">{getUpcomingAppointments().length} upcoming</p>
         </Link>
-        <Link href="/dashboard/tasks" className="card hover:border-primary-500/50 transition-all text-center group">
+        <Link href="/dashboard/tasker" className="card hover:border-primary-500/50 transition-all text-center group">
           <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">✅</span>
           <p className="font-semibold text-white">Tasks</p>
           <p className="text-xs text-gray-400">{stats.pendingTasks} pending</p>
@@ -625,38 +579,75 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tools Grid */}
-      <div className="card">
-        <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-          <span>🧰</span> Quick Tools
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-          <Link href="/dashboard/calculator" className="p-4 bg-dark-bg rounded-lg text-center hover:bg-primary-500/10 transition-all group">
-            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🧮</span>
-            <p className="text-xs text-gray-400">Mortgage Calc</p>
-          </Link>
-          <Link href="/dashboard/investment-calculator" className="p-4 bg-dark-bg rounded-lg text-center hover:bg-primary-500/10 transition-all group">
-            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">📈</span>
-            <p className="text-xs text-gray-400">Investment Calc</p>
-          </Link>
-          <Link href="/dashboard/seller-net-sheet" className="p-4 bg-dark-bg rounded-lg text-center hover:bg-primary-500/10 transition-all group">
-            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">💰</span>
-            <p className="text-xs text-gray-400">Seller Net</p>
-          </Link>
-          <Link href="/dashboard/buyer-costs" className="p-4 bg-dark-bg rounded-lg text-center hover:bg-primary-500/10 transition-all group">
-            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🏠</span>
-            <p className="text-xs text-gray-400">Buyer Costs</p>
-          </Link>
-          <Link href="/dashboard/coach" className="p-4 bg-dark-bg rounded-lg text-center hover:bg-primary-500/10 transition-all group">
-            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">🤖</span>
-            <p className="text-xs text-gray-400">AI Coach</p>
-          </Link>
-          <Link href="/dashboard/quick-replies" className="p-4 bg-dark-bg rounded-lg text-center hover:bg-primary-500/10 transition-all group">
-            <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">⚡</span>
-            <p className="text-xs text-gray-400">Quick Replies</p>
-          </Link>
+      {/* ============================================== */}
+      {/* TOOLS & CALCULATORS - PROTOTYPE STYLE TILES   */}
+      {/* ============================================== */}
+      
+      <div className="mt-8">
+        <h2 className="font-playfair text-xl md:text-2xl mb-6 text-white flex items-center gap-3">
+          Tools & Calculators 
+          <span className="text-xs font-normal text-gray-500">
+            Drag to rearrange
+          </span>
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {orderedTiles.map((tile, idx) => (
+            <Link 
+              key={tile.id}
+              href={tile.href}
+              className="group relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
+              style={{
+                background: 'linear-gradient(135deg, #1A1A1A 0%, #1F1F1F 100%)',
+                border: '1px solid #2A2A2A',
+                animation: `fadeInUp 0.5s ease forwards`,
+                animationDelay: `${idx * 0.05}s`,
+                opacity: 0
+              }}
+            >
+              {/* Top colored accent bar */}
+              <div 
+                className="absolute top-0 left-0 right-0 h-1"
+                style={{ backgroundColor: tile.color }}
+              />
+              
+              {/* Icon */}
+              <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform">
+                {tile.icon}
+              </span>
+              
+              {/* Title */}
+              <h3 className="font-playfair text-lg mb-2 text-white group-hover:text-primary-400 transition-colors">
+                {tile.title}
+              </h3>
+              
+              {/* Description */}
+              <p className="text-sm text-gray-400 leading-relaxed pr-6">
+                {tile.desc}
+              </p>
+              
+              {/* Arrow */}
+              <span className="absolute bottom-5 right-5 text-primary-500 text-xl opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+                →
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
+
+      {/* Keyframe animation for tiles */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }

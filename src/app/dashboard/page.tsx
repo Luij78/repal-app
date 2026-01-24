@@ -323,31 +323,37 @@ export default function DashboardPage() {
   const urgentAlerts = getUrgentAlertsCount()
 
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="animate-fade-in space-y-4 sm:space-y-6">
       {/* AI Daily Digest */}
       <div className="card bg-gradient-to-br from-primary-500/10 via-blue-500/5 to-purple-500/10 border-primary-500/30">
         <div 
-          className="flex items-center justify-between cursor-pointer"
+          className="cursor-pointer"
           onClick={() => setDigestExpanded(!digestExpanded)}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center">
-              <span className="text-xl">🤖</span>
+          {/* Top row - greeting and expand button */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                <span className="text-lg sm:text-xl">🤖</span>
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-white">
+                  {getGreeting()}, {user?.firstName || 'there'}!
+                </h2>
+                <p className="text-gray-400 text-xs sm:text-sm">
+                  {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">
-                {getGreeting()}, {user?.firstName || 'there'}!
-              </h2>
-              <p className="text-gray-400 text-sm">
-                {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-              </p>
-            </div>
+            <span className="text-gray-400 text-sm">{digestExpanded ? '▲' : '▼'}</span>
           </div>
-          <div className="flex items-center gap-2">
+          
+          {/* AI feature buttons - responsive wrap */}
+          <div className="flex flex-wrap gap-2">
             <Link 
               href="/dashboard/alerts"
               onClick={(e) => e.stopPropagation()}
-              className="relative flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-2 py-1 rounded-full transition-all"
+              className="relative flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-3 py-2 rounded-full transition-all"
             >
               <span>🔔</span>
               <span className="text-primary-400">Alerts</span>
@@ -360,12 +366,11 @@ export default function DashboardPage() {
             <Link 
               href="/dashboard/smart-tasks"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 px-2 py-1 rounded-full transition-all"
+              className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 px-3 py-2 rounded-full transition-all"
             >
               <span>🧠</span>
               <span className="text-green-400">Smart Tasks</span>
             </Link>
-            <span className="text-gray-400">{digestExpanded ? '▲' : '▼'}</span>
           </div>
         </div>
 

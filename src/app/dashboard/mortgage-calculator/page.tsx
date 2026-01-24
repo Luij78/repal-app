@@ -396,7 +396,7 @@ export default function MortgageCalculatorPage() {
                 <span className="text-white font-semibold">{formatCurrency(results.loanAmount)}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-dark-border">
-                <span className="text-gray-400">Total of {loanTerm * 12} Payments</span>
+                <span className="text-gray-400">Total of {parseInt(loanTerm) * 12} Payments</span>
                 <span className="text-white">{formatCurrency(results.totalPayments)}</span>
               </div>
               <div className="flex justify-between py-2">

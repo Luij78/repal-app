@@ -100,22 +100,18 @@ export default function DashboardPage() {
     if (!user) return
     setLoading(true)
     
-    // Load leads
     const savedLeads = localStorage.getItem(`leads_${user.id}`)
     if (savedLeads) setLeads(JSON.parse(savedLeads))
     
-    // Load appointments
     const savedAppointments = localStorage.getItem(`appointments_${user.id}`)
     if (savedAppointments) setAppointments(JSON.parse(savedAppointments))
     
-    // Load tasks
     const savedTasks = localStorage.getItem(`tasks_${user.id}`)
     if (savedTasks) setTasks(JSON.parse(savedTasks))
     
     setLoading(false)
   }
 
-  // Get greeting based on time
   const getGreeting = () => {
     const hour = currentTime.getHours()
     if (hour < 12) return '🌅 Good Morning'
@@ -123,32 +119,18 @@ export default function DashboardPage() {
     return '🌙 Good Evening'
   }
 
-  // Calculate days since last contact
   const daysSinceContact = (dateStr: string) => {
     if (!dateStr) return 999
     const date = new Date(dateStr)
     const now = new Date()
-    const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
+    return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  // Get today's appointments
   const getTodayAppointments = () => {
     const today = new Date().toISOString().split('T')[0]
     return appointments.filter(apt => apt.date === today)
   }
 
-  // Get upcoming appointments (next 7 days)
-  const getUpcomingAppointments = () => {
-    const today = new Date()
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-    return appointments.filter(apt => {
-      const aptDate = new Date(apt.date)
-      return aptDate >= today && aptDate <= nextWeek
-    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-  }
-
-  // Get leads needing follow-up (no contact in 14+ days)
   const getLeadsNeedingFollowup = () => {
     return leads.filter(lead => {
       const days = daysSinceContact(lead.last_contact)
@@ -156,28 +138,14 @@ export default function DashboardPage() {
     }).sort((a, b) => daysSinceContact(b.last_contact) - daysSinceContact(a.last_contact))
   }
 
-  // Get overdue tasks
   const getOverdueTasks = () => {
     const today = new Date().toISOString().split('T')[0]
     return tasks.filter(task => task.due_date < today && task.status !== 'completed')
   }
 
-  // Get tasks due today
-  const getTodayTasks = () => {
-    const today = new Date().toISOString().split('T')[0]
-    return tasks.filter(task => task.due_date === today && task.status !== 'completed')
-  }
-
-  // Get leads by status
-  const getLeadsByStatus = (status: string) => {
-    return leads.filter(lead => lead.status === status)
-  }
-
-  // Generate AI Insights
   const generateInsights = (): DigestInsight[] => {
     const insights: DigestInsight[] = []
     
-    // Priority: Overdue tasks
     const overdueTasks = getOverdueTasks()
     if (overdueTasks.length > 0) {
       insights.push({
@@ -188,11 +156,10 @@ export default function DashboardPage() {
           ? `"${overdueTasks[0].title}" needs attention`
           : `Including "${overdueTasks[0].title}" - tackle these first`,
         action: 'View Tasks',
-        link: '/dashboard/tasks'
+        link: '/dashboard/tasker'
       })
     }
 
-    // Priority: Today's appointments
     const todayApts = getTodayAppointments()
     if (todayApts.length > 0) {
       insights.push({
@@ -205,7 +172,6 @@ export default function DashboardPage() {
       })
     }
 
-    // Suggestion: Leads needing follow-up
     const needFollowup = getLeadsNeedingFollowup()
     if (needFollowup.length > 0) {
       const urgent = needFollowup.filter(l => daysSinceContact(l.last_contact) >= 30)
@@ -230,7 +196,6 @@ export default function DashboardPage() {
       }
     }
 
-    // Opportunity: New leads this week
     const thisWeek = new Date()
     thisWeek.setDate(thisWeek.getDate() - 7)
     const newLeads = leads.filter(l => new Date(l.created_at) >= thisWeek)
@@ -250,14 +215,11 @@ export default function DashboardPage() {
 
   const insights = generateInsights()
 
-  // Calculate stats
   const stats = {
-    totalLeads: leads.length,
-    activeLeads: leads.filter(l => l.status !== 'closed' && l.status !== 'lost').length,
-    hotLeads: leads.filter(l => l.status === 'hot').length,
-    coldLeads: leads.filter(l => l.status === 'cold').length,
     todayAppointments: getTodayAppointments().length,
-    pendingTasks: tasks.filter(t => t.status !== 'completed').length
+    needFollowup: getLeadsNeedingFollowup().length,
+    overdueTasks: getOverdueTasks().length,
+    hotLeads: leads.filter(l => l.status === 'hot').length
   }
 
   // Get ordered tiles
@@ -265,7 +227,6 @@ export default function DashboardPage() {
     .map(id => defaultTiles.find(t => t.id === id))
     .filter(Boolean) as typeof defaultTiles
   
-  // Add any new tiles not in saved order
   defaultTiles.forEach(t => {
     if (!tileOrder.includes(t.id)) {
       orderedTiles.push(t)
@@ -285,7 +246,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-8 animate-fade-in">
-      {/* AI Daily Digest */}
+      {/* ========================================== */}
+      {/* AI DAILY DIGEST                           */}
+      {/* ========================================== */}
       <div 
         className="card bg-gradient-to-br from-dark-card to-dark-bg border-primary-500/30 cursor-pointer"
         onClick={() => setDigestExpanded(!digestExpanded)}
@@ -310,9 +273,9 @@ export default function DashboardPage() {
             >
               <span>🔔</span>
               <span className="text-primary-400">AI Alerts</span>
-              {(getOverdueTasks().length + getLeadsNeedingFollowup().length) > 0 && (
+              {(stats.overdueTasks + stats.needFollowup) > 0 && (
                 <span className="bg-red-500 text-white text-xs rounded-full px-1.5">
-                  {getOverdueTasks().length + getLeadsNeedingFollowup().length}
+                  {stats.overdueTasks + stats.needFollowup}
                 </span>
               )}
             </Link>
@@ -330,18 +293,18 @@ export default function DashboardPage() {
 
         {digestExpanded && (
           <div className="mt-6 space-y-4">
-            {/* Quick Summary */}
+            {/* Quick Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-dark-bg/50 rounded-lg p-3 text-center">
                 <p className="text-2xl font-bold text-white">{stats.todayAppointments}</p>
                 <p className="text-xs text-gray-400">Today's Appts</p>
               </div>
               <div className="bg-dark-bg/50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-yellow-400">{getLeadsNeedingFollowup().length}</p>
+                <p className="text-2xl font-bold text-yellow-400">{stats.needFollowup}</p>
                 <p className="text-xs text-gray-400">Need Follow-up</p>
               </div>
               <div className="bg-dark-bg/50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-red-400">{getOverdueTasks().length}</p>
+                <p className="text-2xl font-bold text-red-400">{stats.overdueTasks}</p>
                 <p className="text-xs text-gray-400">Overdue Tasks</p>
               </div>
               <div className="bg-dark-bg/50 rounded-lg p-3 text-center">
@@ -361,6 +324,7 @@ export default function DashboardPage() {
                     <Link 
                       key={index}
                       href={insight.link || '#'}
+                      onClick={(e) => e.stopPropagation()}
                       className={`flex items-start gap-3 p-3 rounded-lg transition-all hover:scale-[1.01] ${
                         insight.type === 'alert' 
                           ? 'bg-red-500/10 border border-red-500/30 hover:border-red-500/50'
@@ -421,169 +385,10 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Link href="/dashboard/leads" className="card hover:border-primary-500/50 transition-all text-center group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">👥</span>
-          <p className="font-semibold text-white">Leads</p>
-          <p className="text-xs text-gray-400">{stats.activeLeads} active</p>
-        </Link>
-        <Link href="/dashboard/appointments" className="card hover:border-primary-500/50 transition-all text-center group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">📅</span>
-          <p className="font-semibold text-white">Appointments</p>
-          <p className="text-xs text-gray-400">{getUpcomingAppointments().length} upcoming</p>
-        </Link>
-        <Link href="/dashboard/tasker" className="card hover:border-primary-500/50 transition-all text-center group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">✅</span>
-          <p className="font-semibold text-white">Tasks</p>
-          <p className="text-xs text-gray-400">{stats.pendingTasks} pending</p>
-        </Link>
-        <Link href="/dashboard/drip" className="card hover:border-primary-500/50 transition-all text-center group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">📧</span>
-          <p className="font-semibold text-white">Drip Campaigns</p>
-          <p className="text-xs text-gray-400">Re-engage leads</p>
-        </Link>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Total Leads</p>
-              <p className="text-2xl font-bold text-white">{stats.totalLeads}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center">
-              <span className="text-2xl">👥</span>
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Hot Leads</p>
-              <p className="text-2xl font-bold text-green-400">{stats.hotLeads}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-              <span className="text-2xl">🔥</span>
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Cold Leads</p>
-              <p className="text-2xl font-bold text-blue-400">{stats.coldLeads}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <span className="text-2xl">❄️</span>
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">This Week</p>
-              <p className="text-2xl font-bold text-purple-400">{getUpcomingAppointments().length}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-              <span className="text-2xl">📅</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Two Column Layout */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Upcoming Appointments */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <span>📅</span> Upcoming Appointments
-            </h3>
-            <Link href="/dashboard/appointments" className="text-primary-400 text-sm hover:underline">
-              View All →
-            </Link>
-          </div>
-          {getUpcomingAppointments().length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <span className="text-3xl mb-2 block">📭</span>
-              <p>No upcoming appointments</p>
-              <Link href="/dashboard/appointments" className="text-primary-400 text-sm hover:underline">
-                Schedule one →
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {getUpcomingAppointments().slice(0, 4).map(apt => (
-                <div key={apt.id} className="flex items-center gap-3 p-3 bg-dark-bg rounded-lg">
-                  <div className="text-center min-w-[60px]">
-                    <p className="text-xs text-gray-400">
-                      {new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </p>
-                    <p className="text-sm font-bold text-white">{apt.time}</p>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{apt.title}</p>
-                    <p className="text-xs text-gray-400 truncate">{apt.client_name}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Leads */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <span>👥</span> Recent Leads
-            </h3>
-            <Link href="/dashboard/leads" className="text-primary-400 text-sm hover:underline">
-              View All →
-            </Link>
-          </div>
-          {leads.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <span className="text-3xl mb-2 block">👤</span>
-              <p>No leads yet</p>
-              <Link href="/dashboard/leads" className="text-primary-400 text-sm hover:underline">
-                Add your first lead →
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {leads.slice(0, 4).map(lead => (
-                <div key={lead.id} className="flex items-center gap-3 p-3 bg-dark-bg rounded-lg">
-                  <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
-                    <span className="text-sm font-bold text-primary-400">
-                      {lead.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{lead.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{lead.type || 'Lead'}</p>
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    lead.status === 'hot' ? 'bg-green-500/20 text-green-400' :
-                    lead.status === 'cold' ? 'bg-blue-500/20 text-blue-400' :
-                    lead.status === 'warm' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-gray-500/20 text-gray-400'
-                  }`}>
-                    {lead.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ============================================== */}
-      {/* TOOLS & CALCULATORS - PROTOTYPE STYLE TILES   */}
-      {/* ============================================== */}
-      
-      <div className="mt-8">
+      {/* ========================================== */}
+      {/* TOOLS & CALCULATORS - PROTOTYPE TILES     */}
+      {/* ========================================== */}
+      <div>
         <h2 className="font-playfair text-xl md:text-2xl mb-6 text-white flex items-center gap-3">
           Tools & Calculators 
           <span className="text-xs font-normal text-gray-500">

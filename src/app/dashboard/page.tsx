@@ -350,12 +350,20 @@ export default function DashboardPage() {
               className="relative flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-2 py-1 rounded-full transition-all"
             >
               <span>🔔</span>
-              <span className="text-primary-400">AI Alerts</span>
+              <span className="text-primary-400">Alerts</span>
               {urgentAlerts > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                   {urgentAlerts}
                 </span>
               )}
+            </Link>
+            <Link 
+              href="/dashboard/smart-tasks"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 px-2 py-1 rounded-full transition-all"
+            >
+              <span>🧠</span>
+              <span className="text-green-400">Smart Tasks</span>
             </Link>
             <span className="text-gray-400">{digestExpanded ? '▲' : '▼'}</span>
           </div>

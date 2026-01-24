@@ -28,6 +28,8 @@ export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [editingNotes, setEditingNotes] = useState('')
+  const [savingNotes, setSavingNotes] = useState(false)
   
   const [newLead, setNewLead] = useState({
     name: '',
@@ -46,6 +48,13 @@ export default function LeadsPage() {
   useEffect(() => {
     if (user) fetchLeads()
   }, [user])
+
+  // When a lead is selected, initialize the editing notes
+  useEffect(() => {
+    if (selectedLead) {
+      setEditingNotes(selectedLead.notes || '')
+    }
+  }, [selectedLead])
 
   const fetchLeads = async () => {
     if (!user) return
@@ -115,7 +124,27 @@ export default function LeadsPage() {
       console.error('Error updating lead:', error)
     } else {
       setLeads(leads.map(l => l.id === leadId ? { ...l, status: newStatus as Lead['status'] } : l))
+      setSelectedLead(prev => prev && prev.id === leadId ? { ...prev, status: newStatus as Lead['status'] } : prev)
     }
+  }
+
+  const updateLeadNotes = async () => {
+    if (!selectedLead) return
+    
+    setSavingNotes(true)
+    const { error } = await supabase
+      .from('leads')
+      .update({ notes: editingNotes })
+      .eq('id', selectedLead.id)
+
+    if (error) {
+      console.error('Error updating notes:', error)
+    } else {
+      // Update local state
+      setLeads(leads.map(l => l.id === selectedLead.id ? { ...l, notes: editingNotes } : l))
+      setSelectedLead(prev => prev ? { ...prev, notes: editingNotes } : null)
+    }
+    setSavingNotes(false)
   }
 
   const deleteLead = async (leadId: string) => {
@@ -145,6 +174,9 @@ export default function LeadsPage() {
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
+
+  // Check if notes have been modified
+  const notesChanged = selectedLead && editingNotes !== (selectedLead.notes || '')
 
   return (
     <div className="animate-fade-in">
@@ -389,8 +421,8 @@ export default function LeadsPage() {
       {/* Lead Detail Modal */}
       {selectedLead && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg">
-            <div className="p-6 border-b border-dark-border flex items-center justify-between">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{typeIcons[selectedLead.type]}</span>
                 <div>
@@ -404,7 +436,7 @@ export default function LeadsPage() {
                 ✕
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {selectedLead.email && (
                 <div className="flex items-center gap-3">
                   <span className="text-gray-500">📧</span>
@@ -435,12 +467,33 @@ export default function LeadsPage() {
                   </p>
                 </div>
               )}
-              {selectedLead.notes && (
-                <div>
+              
+              {/* Editable Notes Section */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
                   <p className="text-gray-500 text-sm">Notes</p>
-                  <p className="text-white">{selectedLead.notes}</p>
+                  {notesChanged && (
+                    <span className="text-yellow-500 text-xs">Unsaved changes</span>
+                  )}
                 </div>
-              )}
+                <textarea
+                  value={editingNotes}
+                  onChange={(e) => setEditingNotes(e.target.value)}
+                  className="input-field w-full text-sm"
+                  rows={6}
+                  placeholder="Add notes about this lead..."
+                />
+                {notesChanged && (
+                  <button
+                    onClick={updateLeadNotes}
+                    disabled={savingNotes}
+                    className="btn-primary w-full mt-2 text-sm"
+                  >
+                    {savingNotes ? 'Saving...' : '💾 Save Notes'}
+                  </button>
+                )}
+              </div>
+
               <div>
                 <p className="text-gray-500 text-sm mb-2">Update Status</p>
                 <div className="flex flex-wrap gap-2">
@@ -460,7 +513,7 @@ export default function LeadsPage() {
                 </div>
               </div>
             </div>
-            <div className="p-6 border-t border-dark-border flex gap-3">
+            <div className="p-6 border-t border-dark-border flex gap-3 flex-shrink-0">
               <button 
                 onClick={() => deleteLead(selectedLead.id)} 
                 className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"

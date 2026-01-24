@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser } from '@clerk/nextjs'
-import Link from 'next/link'
 import CalendarPicker from '@/components/CalendarPicker'
 
 interface Lead {
@@ -28,7 +26,7 @@ const typeOptions = ['buyer', 'seller', 'buyer_seller', 'investor', 'buyer_55', 
 const sourceOptions = ['website', 'referral', 'zillow', 'realtor.com', 'social_media', 'open_house', 'cold_call', 'sphere', 'other']
 
 export default function LeadsPage() {
-  const { user } = useUser()
+  const [mounted, setMounted] = useState(false)
   const [leads, setLeads] = useState<Lead[]>([])
   const [showModal, setShowModal] = useState(false)
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
@@ -51,13 +49,16 @@ export default function LeadsPage() {
   })
 
   useEffect(() => {
-    if (user) {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
+    setMounted(true)
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      try {
         setLeads(JSON.parse(saved))
+      } catch (e) {
+        console.error('Error loading leads:', e)
       }
     }
-  }, [user])
+  }, [])
 
   const saveLeads = (newLeads: Lead[]) => {
     setLeads(newLeads)
@@ -198,7 +199,13 @@ export default function LeadsPage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
+      {!mounted ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-gray-400">Loading...</div>
+        </div>
+      ) : (
+        <>
+        {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Lead Manager</h1>
@@ -561,6 +568,8 @@ export default function LeadsPage() {
             </form>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   )

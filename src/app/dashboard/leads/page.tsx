@@ -1,7 +1,172 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+
+// Custom Calendar Date Picker Component
+function DatePickerField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (value) setCurrentMonth(new Date(value + 'T00:00:00'))
+  }, [])
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
+  const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  const firstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay()
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+
+  const prevMonth = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))
+  }
+  const nextMonth = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))
+  }
+
+  const selectDate = (day: number) => {
+    const selected = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+    const dateStr = selected.toISOString().split('T')[0]
+    onChange(dateStr)
+    setIsOpen(false)
+  }
+
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return 'Select date'
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const today = new Date()
+  const todayStr = today.toISOString().split('T')[0]
+
+  const renderDays = () => {
+    const days = []
+    const totalDays = daysInMonth(currentMonth)
+    const firstDay = firstDayOfMonth(currentMonth)
+    
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="w-10 h-10" />)
+    }
+    
+    for (let day = 1; day <= totalDays; day++) {
+      const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const isSelected = value === dateStr
+      const isToday = dateStr === todayStr
+      
+      days.push(
+        <button
+          key={day}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); selectDate(day) }}
+          className={`w-10 h-10 rounded-xl text-sm font-medium transition-all flex items-center justify-center ${
+            isSelected 
+              ? 'bg-gradient-to-br from-primary-500 to-[#B8960C] text-dark-bg shadow-lg shadow-primary-500/30' 
+              : isToday 
+                ? 'bg-primary-500/20 text-primary-400 border border-primary-500/50' 
+                : 'text-white hover:bg-white/10'
+          }`}
+        >
+          {day}
+        </button>
+      )
+    }
+    return days
+  }
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">{label}</label>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-left flex items-center justify-between hover:border-primary-500/50 transition-colors"
+      >
+        <span className={value ? 'text-white' : 'text-gray-500'}>{formatDisplayDate(value)}</span>
+        <span className="text-xl">📅</span>
+      </button>
+      
+      {isOpen && (
+        <div className="absolute z-[100] mt-2 left-0 right-0">
+          {/* Calendar Popup */}
+          <div 
+            className="p-5 rounded-2xl border border-primary-500/20 shadow-2xl"
+            style={{
+              background: 'linear-gradient(145deg, rgba(30,30,30,0.98) 0%, rgba(15,15,15,0.99) 100%)',
+              boxShadow: '0 0 60px rgba(212,175,55,0.15), 0 25px 50px rgba(0,0,0,0.5)'
+            }}
+          >
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <button 
+                type="button" 
+                onClick={prevMonth} 
+                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-colors text-lg"
+              >
+                ‹
+              </button>
+              <span className="font-playfair text-white text-lg" style={{ textShadow: '0 0 20px rgba(212,175,55,0.4)' }}>
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </span>
+              <button 
+                type="button" 
+                onClick={nextMonth} 
+                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-colors text-lg"
+              >
+                ›
+              </button>
+            </div>
+            
+            {/* Day Headers */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {dayNames.map(day => (
+                <div key={day} className="w-10 h-8 flex items-center justify-center text-xs text-primary-400 font-semibold">{day}</div>
+              ))}
+            </div>
+            
+            {/* Days Grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {renderDays()}
+            </div>
+            
+            {/* Quick Actions */}
+            <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
+              <button 
+                type="button" 
+                onClick={(e) => { e.stopPropagation(); onChange(todayStr); setIsOpen(false) }} 
+                className="flex-1 py-2.5 text-sm font-semibold bg-primary-500/20 text-primary-400 rounded-xl hover:bg-primary-500/30 transition-colors"
+              >
+                Today
+              </button>
+              <button 
+                type="button" 
+                onClick={(e) => { e.stopPropagation(); onChange(''); setIsOpen(false) }} 
+                className="flex-1 py-2.5 text-sm font-semibold bg-white/5 text-gray-400 rounded-xl hover:bg-white/10 hover:text-white transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<any[]>([])
@@ -14,6 +179,26 @@ export default function LeadsPage() {
     name: '', email: '', phone: '', type: 'buyer', status: 'new', priority: 5,
     budget: '', preferredArea: '', followUpDate: '', birthday: '', homeAnniversary: '', notes: ''
   })
+
+  // Status options as requested
+  const statusOptions = [
+    { value: 'new', label: 'New', color: '#4ECDC4' },
+    { value: 'unqualified', label: 'Unqualified', color: '#E74C3C' },
+    { value: 'hot', label: 'Hot', color: '#C97B63' },
+    { value: 'nurture', label: 'Nurture', color: '#9B59B6' },
+    { value: 'watch', label: 'Watch', color: '#F39C12' },
+    { value: 'pending', label: 'Pending', color: '#D4AF37' },
+    { value: 'past-client', label: 'Past Client', color: '#4A9B7F' },
+    { value: 'archive', label: 'Archive', color: '#666' },
+    { value: 'trash', label: 'Trash', color: '#333' }
+  ]
+
+  // Type options as requested
+  const typeOptions = [
+    { value: 'buyer', label: 'Buyer', color: '#4A9B7F' },
+    { value: 'seller', label: 'Seller', color: '#6B8DD6' },
+    { value: 'tenant', label: 'Tenant', color: '#9B59B6' }
+  ]
 
   useEffect(() => {
     const saved = localStorage.getItem('repal_leads')
@@ -31,13 +216,11 @@ export default function LeadsPage() {
   }
 
   const getStatusColor = (s: string) => {
-    const colors: Record<string, string> = { new: '#4ECDC4', contacted: '#6B8DD6', qualified: '#D4AF37', negotiating: '#C97B63', closed: '#4A9B7F', lost: '#666' }
-    return colors[s] || '#666'
+    return statusOptions.find(opt => opt.value === s)?.color || '#666'
   }
 
   const getTypeColor = (t: string) => {
-    const colors: Record<string, string> = { buyer: '#4A9B7F', buyer55: '#4A9B7F', seller: '#6B8DD6', investor: '#9B59B6', renter: '#E67E22' }
-    return colors[t] || '#666'
+    return typeOptions.find(opt => opt.value === t)?.color || '#666'
   }
 
   const filteredLeads = leads.filter(lead => {
@@ -51,7 +234,6 @@ export default function LeadsPage() {
   })
 
   const todaysFollowUps = leads.filter(lead => lead.followUpDate === new Date().toISOString().split('T')[0])
-  const hotLeads = leads.filter(lead => lead.priority <= 3)
 
   const saveLead = () => {
     if (!formData.name) return alert('Please enter a name')
@@ -102,14 +284,11 @@ export default function LeadsPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 min-w-[150px] px-4 py-3 text-base bg-dark-card border border-dark-border rounded-lg text-white outline-none focus:border-primary-500"
         />
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-3 text-sm bg-[#0D0D0D] border border-dark-border rounded-lg text-white min-w-[120px] cursor-pointer">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-3 text-sm bg-[#0D0D0D] border border-dark-border rounded-lg text-white min-w-[130px] cursor-pointer">
           <option value="all">All Status</option>
-          <option value="new">New</option>
-          <option value="contacted">Contacted</option>
-          <option value="qualified">Qualified</option>
-          <option value="negotiating">Negotiating</option>
-          <option value="closed">Closed</option>
-          <option value="lost">Lost</option>
+          {statusOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
         <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="px-4 py-3 text-sm bg-[#0D0D0D] border border-dark-border rounded-lg text-white min-w-[120px] cursor-pointer">
           <option value="all">All Priority</option>
@@ -153,10 +332,10 @@ export default function LeadsPage() {
                     {lead.priority <= 3 ? '🔥' : lead.priority <= 6 ? '☀️' : '❄️'} P{lead.priority}
                   </span>
                   <span className="px-3 py-0.5 rounded-full text-xs font-semibold text-white capitalize" style={{ backgroundColor: getTypeColor(lead.type) }}>
-                    {lead.type === 'buyer55' ? 'Buyer 55+' : lead.type}
+                    {typeOptions.find(t => t.value === lead.type)?.label || lead.type}
                   </span>
                   <span className="px-3 py-0.5 rounded-full text-xs font-semibold text-white capitalize" style={{ backgroundColor: getStatusColor(lead.status) }}>
-                    {lead.status}
+                    {statusOptions.find(s => s.value === lead.status)?.label || lead.status}
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -173,7 +352,14 @@ export default function LeadsPage() {
                 {lead.preferredArea && <span>📍 {lead.preferredArea}</span>}
               </div>
               {lead.notes && (
-                <div className="text-sm text-gray-300 leading-relaxed p-4 bg-[#0D0D0D] rounded-lg font-mono whitespace-pre-wrap">
+                <div 
+                  className="text-sm leading-relaxed p-4 bg-[#0D0D0D] rounded-lg whitespace-pre-wrap"
+                  style={{ 
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                    color: '#E8E4DC',
+                    lineHeight: '1.7'
+                  }}
+                >
                   {lead.notes}
                 </div>
               )}
@@ -185,7 +371,7 @@ export default function LeadsPage() {
       {/* Add/Edit Lead Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 overflow-y-auto backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-dark-border">
+          <div className="bg-gradient-to-br from-dark-card to-[#1F1F1F] rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-dark-border my-4">
             <h2 className="font-playfair text-xl text-primary-400 mb-6">{editingLead ? 'Edit Lead' : 'Add New Lead'}</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -204,28 +390,20 @@ export default function LeadsPage() {
               <div>
                 <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Type</label>
                 <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white cursor-pointer">
-                  <option value="buyer">Buyer</option>
-                  <option value="buyer55">Buyer 55+</option>
-                  <option value="seller">Seller</option>
-                  <option value="investor">Investor</option>
-                  <option value="renter">Renter</option>
+                  {typeOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Status</label>
                 <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white cursor-pointer">
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="negotiating">Negotiating</option>
-                  <option value="closed">Closed</option>
-                  <option value="lost">Lost</option>
+                  {statusOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Follow Up Date</label>
-                <input type="date" value={formData.followUpDate} onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
+              <DatePickerField label="Follow Up Date" value={formData.followUpDate} onChange={(v) => setFormData({ ...formData, followUpDate: v })} />
               <div>
                 <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Budget</label>
                 <input type="text" value={formData.budget} onChange={(e) => setFormData({ ...formData, budget: e.target.value })} placeholder="e.g. 400,000" className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
@@ -251,14 +429,8 @@ export default function LeadsPage() {
 
             {/* Dates Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">🎂 Birthday</label>
-                <input type="date" value={formData.birthday} onChange={(e) => setFormData({ ...formData, birthday: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">🏠 Home Anniversary</label>
-                <input type="date" value={formData.homeAnniversary} onChange={(e) => setFormData({ ...formData, homeAnniversary: e.target.value })} className="w-full px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500" />
-              </div>
+              <DatePickerField label="🎂 Birthday" value={formData.birthday} onChange={(v) => setFormData({ ...formData, birthday: v })} />
+              <DatePickerField label="🏠 Home Anniversary" value={formData.homeAnniversary} onChange={(v) => setFormData({ ...formData, homeAnniversary: v })} />
             </div>
 
             {/* Notes */}
@@ -281,7 +453,17 @@ export default function LeadsPage() {
                 <p className="text-xs text-gray-500 mt-2 italic text-center">Always timestamp your notes so other agents can follow the conversation history</p>
               </div>
 
-              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Continue typing your note..." className="w-full min-h-[150px] px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white font-mono text-sm leading-relaxed outline-none focus:border-primary-500 resize-y" />
+              <textarea 
+                value={formData.notes} 
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
+                placeholder="Continue typing your note..." 
+                className="w-full min-h-[150px] px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-[#E8E4DC] leading-relaxed outline-none focus:border-primary-500 resize-y"
+                style={{ 
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                  fontSize: '0.925rem',
+                  lineHeight: '1.7'
+                }}
+              />
             </div>
 
             <div className="flex gap-4 justify-end">

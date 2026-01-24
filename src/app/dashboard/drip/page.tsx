@@ -28,21 +28,17 @@ interface MarketData {
   inventoryChange: string
   hotNeighborhood1: string
   hotNeighborhood1Change: string
-  hotNeighborhood2: string
-  hotNeighborhood2Change: string
 }
 
 const defaultMarketData: MarketData = {
-  interestRate: '6.5',
-  priceRangeLow: '380000',
-  priceRangeHigh: '450000',
-  priceChange: '+3.2',
-  avgDaysOnMarket: '45',
-  inventoryChange: '+30',
+  interestRate: '',
+  priceRangeLow: '',
+  priceRangeHigh: '',
+  priceChange: '',
+  avgDaysOnMarket: '',
+  inventoryChange: '',
   hotNeighborhood1: '',
-  hotNeighborhood1Change: '+12',
-  hotNeighborhood2: '',
-  hotNeighborhood2Change: '+8',
+  hotNeighborhood1Change: '',
 }
 
 const marketFocusOptions = [
@@ -70,149 +66,120 @@ const generateTopicContent = (topicHint: string, community: string): string => {
   const hint = topicHint.toLowerCase()
   const communityName = community || 'your area'
   
-  // Infrastructure / Roads / Commute
-  if (hint.includes('infrastructure') || hint.includes('road') || hint.includes('commute') || hint.includes('highway') || hint.includes('traffic')) {
-    return `🚧 **Infrastructure Improvements Making ${communityName} More Accessible**
+  if (hint.includes('infrastructure') || hint.includes('road') || hint.includes('commute') || hint.includes('highway')) {
+    return `
 
-Big things are happening that will make getting around ${communityName} much easier:
+INFRASTRUCTURE IMPROVEMENTS
 
-• **Highway expansions** are reducing commute times significantly - some residents reporting 15-20 minute savings
-• **New interchange projects** are improving access to major employment centers
-• **Road widening** on key corridors is alleviating rush hour congestion
-• **Future planning** includes additional connector roads and improved traffic flow
+I wanted to share some developments happening around ${communityName} that could impact property values:
 
-Why this matters for buyers: Areas with improving infrastructure historically see stronger appreciation. Buying NOW, before these projects complete, means getting in at today's prices while benefiting from tomorrow's convenience.
+Transportation improvements are underway throughout the area. New road projects and interchange improvements are in various stages of completion, with many residents already reporting shorter commute times to major employment centers.
 
-Smart buyers are paying attention to where the bulldozers are working - that's often where the value is heading.
+Why this matters: Areas with improving infrastructure historically see stronger appreciation. Buyers who purchase before these projects complete often benefit from both today's pricing and tomorrow's convenience.
+
+If you'd like specifics on which projects are happening near areas you're interested in, I'm happy to share what I know.
 
 `
   }
   
-  // New Construction / Builders
-  if (hint.includes('new construction') || hint.includes('builder') || hint.includes('new home') || hint.includes('new build')) {
-    return `🏗️ **New Construction Opportunities in ${communityName}**
+  if (hint.includes('new construction') || hint.includes('builder') || hint.includes('new home')) {
+    return `
 
-Builders are competing for buyers right now, and that means deals:
+NEW CONSTRUCTION OPPORTUNITIES
 
-• **Rate buy-downs** - Some builders are buying down rates to as low as 4.99% for the first 1-2 years
-• **Closing cost assistance** - Up to $10,000-$20,000 in closing cost help
-• **Free upgrades** - Appliance packages, flooring upgrades, and smart home features included
-• **Price reductions** - Inventory homes priced to move
+Builders in ${communityName} are actively competing for buyers right now:
 
-The best part? New construction means new warranty, new everything, and often lower maintenance costs for years.
+Many are offering rate buy-downs that can significantly lower your monthly payment for the first few years. I'm also seeing closing cost assistance, upgraded appliance packages, and other incentives that weren't available during the competitive market.
 
-I'm tracking which builders have the best incentives right now. Want me to share the details?
+New construction means everything is under warranty, energy efficient, and built to current codes. For many buyers, this peace of mind is valuable.
+
+I'm tracking which builders have the best current incentives - happy to share a breakdown if you're interested.
 
 `
   }
   
-  // Schools / Families
-  if (hint.includes('school') || hint.includes('family') || hint.includes('kid') || hint.includes('education')) {
-    return `🎓 **Top-Rated Schools in ${communityName}**
+  if (hint.includes('school') || hint.includes('family') || hint.includes('education')) {
+    return `
 
-For families, school quality is often the #1 priority. Here's the good news about ${communityName}:
+SCHOOL INFORMATION
 
-• **A-rated schools** in several neighborhoods - both elementary and middle
-• **New schools opening** to accommodate growth with modern facilities
-• **Strong extracurricular programs** including sports, arts, and STEM
-• **School choice options** available in the district
+For families considering ${communityName}, the school options are worth knowing about:
 
-Pro tip: Homes in top school zones often command 10-15% premiums AND sell faster. It's an investment that pays off whether you stay or sell later.
+Several neighborhoods feed into highly-rated schools at both elementary and middle school levels. There are also new schools opening to accommodate growth, with modern facilities and strong programs.
 
-I can help you identify which neighborhoods feed into the best schools for your children's ages.
+Homes in top school zones typically command premiums and sell faster - it's an investment that tends to pay off whether you stay long-term or sell later.
+
+I can help identify which neighborhoods align with the best schools for your children's ages.
 
 `
   }
   
-  // Investment / ROI / Rental
-  if (hint.includes('investment') || hint.includes('roi') || hint.includes('rental') || hint.includes('cash flow') || hint.includes('cap rate')) {
-    return `📈 **Investment Potential in ${communityName}**
+  if (hint.includes('investment') || hint.includes('roi') || hint.includes('rental') || hint.includes('cash flow')) {
+    return `
 
-For investors looking at ${communityName}, the numbers are compelling:
+INVESTMENT ANALYSIS
 
-• **Strong rental demand** - Vacancy rates remain low as population grows
-• **Positive cash flow potential** - Properties priced right can cash flow from day one
-• **Appreciation trajectory** - Infrastructure and development driving long-term value
-• **Tenant quality** - Growing employment base means reliable renters
+For investors looking at ${communityName}:
 
-Current opportunities I'm seeing:
-• Single-family rentals in high-demand school zones
-• Value-add properties with cosmetic update potential
-• New construction with builder incentives that improve initial returns
+Rental demand remains strong as the area continues to grow. Vacancy rates are low, and properties priced appropriately can generate positive cash flow. The combination of reasonable entry prices and solid rent potential makes the numbers work for many investors.
 
-Want me to run a detailed cash flow analysis on some specific properties?
+I'm tracking several properties that meet typical investment criteria - happy to run a detailed analysis on any that interest you.
 
 `
   }
   
-  // Interest Rates / Financing
-  if (hint.includes('rate') || hint.includes('financing') || hint.includes('loan') || hint.includes('mortgage') || hint.includes('fha') || hint.includes('va')) {
-    return `💰 **Financing Options & Rate Strategies**
+  if (hint.includes('rate') || hint.includes('financing') || hint.includes('loan') || hint.includes('fha') || hint.includes('va')) {
+    return `
 
-Let's talk about making the numbers work in today's rate environment:
+FINANCING OPTIONS
 
-• **FHA loans** - As low as 3.5% down with competitive rates for first-time buyers
-• **VA loans** - Zero down payment for eligible veterans with no PMI
-• **Conventional options** - 5% down programs available with rate buy-down options
-• **Seller concessions** - Many sellers willing to contribute to buy-down points
+Several loan programs are available depending on your situation:
 
-Strategy tip: A 2-1 buy-down can save you thousands in the first two years while you wait for refinance opportunities. Many sellers are offering these right now.
+FHA loans allow lower down payments, VA loans offer zero down for eligible veterans, and conventional loans have various options including rate buy-downs. Many sellers are now willing to contribute toward closing costs or points.
 
-I work with several excellent lenders who specialize in finding the best program for each situation. Happy to make introductions.
+I work with several excellent lenders who specialize in finding the best program for each situation - happy to make an introduction.
 
 `
   }
   
-  // 55+ / Senior / Retirement
-  if (hint.includes('55') || hint.includes('senior') || hint.includes('retire') || hint.includes('downsize') || hint.includes('active adult')) {
-    return `🏡 **55+ Community Options in ${communityName}**
+  if (hint.includes('55') || hint.includes('senior') || hint.includes('retire') || hint.includes('downsize')) {
+    return `
 
-For those looking at active adult living, ${communityName} has excellent options:
+55+ LIVING OPTIONS
 
-• **Resort-style amenities** - Pools, fitness centers, pickleball courts (the hottest amenity right now!)
-• **Low-maintenance living** - HOA covers exterior maintenance and landscaping
-• **Social opportunities** - Clubs, events, and activities to stay engaged
-• **Healthcare proximity** - Easy access to medical facilities and services
+For those exploring active adult communities in ${communityName}:
 
-What I'm seeing in the market:
-• New communities offering significant move-in incentives
-• Resales in established communities often 10-15% below new construction
-• Single-story options with modern open floor plans
+Many communities offer resort-style amenities including pools, fitness centers, and pickleball courts. The appeal of low-maintenance living continues to attract buyers looking for this lifestyle.
 
-I'd love to show you some communities that might be the perfect fit for this exciting chapter.
+New communities are offering move-in incentives, while established communities often have resales at attractive prices. I'd enjoy showing you some options that might be a great fit.
 
 `
   }
   
-  // Development / Commercial / Growth
-  if (hint.includes('development') || hint.includes('commercial') || hint.includes('growth') || hint.includes('shopping') || hint.includes('restaurant')) {
-    return `🏢 **New Development Bringing Amenities to ${communityName}**
+  if (hint.includes('development') || hint.includes('commercial') || hint.includes('growth') || hint.includes('shopping')) {
+    return `
 
-${communityName} is experiencing exciting commercial growth:
+AREA DEVELOPMENT
 
-• **New retail centers** - Major retailers and local shops coming to the area
-• **Dining options expanding** - From casual to upscale, more choices than ever
-• **Entertainment venues** - Movie theaters, entertainment complexes on the way
-• **Employment growth** - New businesses mean more jobs and economic strength
+${communityName} is experiencing notable commercial growth:
 
-Why this matters: Commercial development follows rooftops, but it also DRIVES demand for housing. Areas with new amenities see increased buyer interest and stronger appreciation.
+New retail and dining options are coming to the area, adding convenience for residents. Employment is also growing as businesses recognize the area's potential.
 
-The neighborhoods closest to these new developments are worth watching closely.
+Commercial development tends to follow population growth, but it also drives additional demand for housing. Areas near new amenities typically see increased buyer interest.
 
 `
   }
   
-  // Default - generate something based on whatever they typed
-  return `📌 **${topicHint}**
+  return `
 
-This is definitely something worth discussing for ${communityName}. The local market dynamics around this topic are creating both opportunities and considerations for buyers and sellers.
+ADDITIONAL INSIGHT
 
-I've been tracking this closely and would love to share more specific details when we connect. This kind of local knowledge can make a real difference in your real estate decisions.
+This is a topic worth discussing as it relates to ${communityName}. I've been following developments closely and would love to share more specific details when we connect.
 
 `
 }
 
-// Generate newsletter with REAL agent-provided data
+// Generate clean, value-focused newsletter
 const generateNewsletterContent = (
   community: string, 
   marketFocus: string,
@@ -229,152 +196,136 @@ const generateNewsletterContent = (
   const currentMonth = new Date().toLocaleString('default', { month: 'long' })
   const currentYear = new Date().getFullYear()
   
-  // Use agent-provided real data
-  const rate = parseFloat(marketData.interestRate) || 6.5
-  const priceLow = parseInt(marketData.priceRangeLow) || 380000
-  const priceHigh = parseInt(marketData.priceRangeHigh) || 450000
-  const priceChangeNum = parseFloat(marketData.priceChange) || 0
-  const priceChangeText = priceChangeNum >= 0 ? `up ${Math.abs(priceChangeNum)}%` : `down ${Math.abs(priceChangeNum)}%`
-  const daysOnMarket = parseInt(marketData.avgDaysOnMarket) || 45
-  const invChange = marketData.inventoryChange || '+30'
+  const hasRealData = marketData.interestRate || marketData.priceRangeLow || marketData.avgDaysOnMarket
   
-  // Calculate monthly payment
-  const loanAmount = (priceLow + priceHigh) / 2 * 0.8
-  const monthlyRate = rate / 100 / 12
-  const monthlyPayment = Math.round((loanAmount * monthlyRate * Math.pow(1 + monthlyRate, 360)) / (Math.pow(1 + monthlyRate, 360) - 1))
-  
-  let content = `Hi {name},
+  let content = `Hi there,
 
-I hope you're doing well! I've been tracking the ${communityName} market closely and wanted to share some insights I think you'll find valuable.
+I hope this finds you well! It's been a while since we connected, and I wanted to share some updates about the ${communityName} real estate market that I thought might interest you.
 
-`
 
-  // MARKET CONDITIONS with real data
-  content += `📊 **${communityName} Market Snapshot**
+WHAT'S HAPPENING IN ${communityName.toUpperCase()}
 
-Here's what the numbers show right now:
-
-• **Mortgage rates**: ${rate}% for 30-year fixed${rate < 6.5 ? " - better than many expected!" : " - stabilized from recent highs"}
-• **Home prices**: $${(priceLow/1000).toFixed(0)}K - $${(priceHigh/1000).toFixed(0)}K typical range (${priceChangeText} YoY)
-• **Days on market**: ${daysOnMarket} days average${daysOnMarket < 40 ? " - good homes still move fast" : " - more time for buyers to decide"}
-• **Inventory**: ${invChange}% ${invChange.includes('+') || parseFloat(invChange) > 0 ? "- more choices!" : "- still competitive"}
+The market has shifted quite a bit from where it was. Here's the current picture:
 
 `
 
-  // HOT NEIGHBORHOODS
-  if (marketData.hotNeighborhood1 || marketData.hotNeighborhood2) {
-    content += `🔥 **Hot Neighborhoods**
-
-`
-    if (marketData.hotNeighborhood1) {
-      content += `• **${marketData.hotNeighborhood1}** - Demand ${marketData.hotNeighborhood1Change.startsWith('+') || marketData.hotNeighborhood1Change.startsWith('-') ? marketData.hotNeighborhood1Change : '+' + marketData.hotNeighborhood1Change}%
-`
+  if (hasRealData) {
+    if (marketData.interestRate) {
+      content += `Mortgage rates are currently around ${marketData.interestRate}% for a 30-year fixed loan.\n\n`
     }
-    if (marketData.hotNeighborhood2) {
-      content += `• **${marketData.hotNeighborhood2}** - Demand ${marketData.hotNeighborhood2Change.startsWith('+') || marketData.hotNeighborhood2Change.startsWith('-') ? marketData.hotNeighborhood2Change : '+' + marketData.hotNeighborhood2Change}%
-`
+    if (marketData.priceRangeLow && marketData.priceRangeHigh) {
+      const low = parseInt(marketData.priceRangeLow) / 1000
+      const high = parseInt(marketData.priceRangeHigh) / 1000
+      content += `Home prices in ${communityName} typically range from $${low.toFixed(0)}K to $${high.toFixed(0)}K`
+      if (marketData.priceChange) {
+        content += ` (${marketData.priceChange}% compared to last year)`
+      }
+      content += `.\n\n`
     }
-    content += `
-`
-  }
-
-  // REAL NUMBERS
-  content += `💵 **What This Means in Real Dollars**
-
-At ${rate}%, here's what a typical ${communityName} home looks like:
-• Purchase price: ~$${((priceLow + priceHigh) / 2 / 1000).toFixed(0)}K
-• Down payment (20%): $${(((priceLow + priceHigh) / 2) * 0.2 / 1000).toFixed(0)}K
-• Monthly P&I: ~$${monthlyPayment.toLocaleString()}/month
-
-Remember: You can always refinance when rates drop. You can't go back in time to buy at today's prices.
-
-`
-
-  // MARKET BALANCE
-  content += `⚖️ **The Market Has Shifted**
-
-The frenzy is over. Here's what that means for you:
-
-• Fewer bidding wars - no more competing against 20 offers
-• Negotiations are back - sellers are working with buyers again
-• More time - you can make thoughtful decisions
-• Builder incentives - new construction deals available
-
-`
-
-  // GENERATE CONTENT FROM USER'S TOPIC SUGGESTIONS
-  if (additionalTopics.trim()) {
-    content += generateTopicContent(additionalTopics, communityName)
-  }
-
-  // INVESTOR-SPECIFIC SECTION
-  if (hasInvestors) {
-    const estimatedRent = Math.round(monthlyPayment * 1.2)
-    
-    content += `📈 **Investment Analysis**
-
-For investors looking at ${communityName}:
-
-• Entry prices: $${(priceLow/1000).toFixed(0)}K - $${(priceHigh/1000).toFixed(0)}K
-• Estimated rents: ~$${estimatedRent.toLocaleString()}/month
-• Cash flow potential: Properties priced right can be positive from day one
-
-Interested in running numbers on specific properties? I'm happy to help.
+    if (marketData.avgDaysOnMarket) {
+      content += `Homes are averaging ${marketData.avgDaysOnMarket} days on market.\n\n`
+    }
+    if (marketData.inventoryChange) {
+      content += `Inventory has changed ${marketData.inventoryChange}% - ${parseFloat(marketData.inventoryChange) > 0 ? 'meaning more options for buyers' : 'still competitive but improving'}.\n\n`
+    }
+  } else {
+    content += `The frantic bidding wars have calmed down significantly. Buyers now have more time to make thoughtful decisions, and sellers are more willing to negotiate on terms. Inventory has improved, giving buyers more choices than we've seen in a while.
 
 `
   }
 
-  // SENIOR BUYER SPECIFIC
-  if (hasSeniors) {
-    content += `🏡 **55+ Living Options**
+  if (marketData.hotNeighborhood1) {
+    content += `NEIGHBORHOODS WORTH WATCHING
 
-Active adult communities in ${communityName} offer:
-• Resort-style amenities and low-maintenance living
-• Social activities and like-minded neighbors
-• Single-story options with modern features
-
-New communities are offering significant move-in incentives right now.
+${marketData.hotNeighborhood1} has seen increased buyer interest`
+    if (marketData.hotNeighborhood1Change) {
+      content += ` with demand up approximately ${marketData.hotNeighborhood1Change}%`
+    }
+    content += `. Let me know if you'd like to learn more about this area.
 
 `
   }
 
-  // BOTTOM LINE
-  content += `💡 **Bottom Line**
+  // WHY THIS MATTERS section
+  content += `WHY THIS MATTERS FOR YOU
 
 `
 
   if (hasBuyers && !hasSellers) {
-    content += `For buyers: You have leverage right now. More inventory, room to negotiate, and time to find the RIGHT home. The key is being prepared when it appears.
+    content += `For buyers, this shift creates real opportunity:
+
+The pressure is off. You're no longer competing against dozens of other offers or making decisions in 24 hours. You can take time to find the right home, negotiate on price and terms, and often get sellers to help with closing costs.
+
+That said, well-priced homes in desirable locations still move quickly. The key is being prepared - knowing your budget, being pre-approved, and working with someone who knows the local market.
+
 `
   } else if (hasSellers && !hasBuyers) {
-    content += `For sellers: Price it right, present it well, and work with someone who knows ${communityName}. Well-positioned homes are still selling strong.
+    content += `For sellers, the market rewards those who approach it strategically:
+
+Pricing correctly from the start is more important than ever. Homes that are priced right and show well are still selling, often with multiple interested buyers. The key is realistic expectations and strong presentation.
+
+If you've been thinking about selling, I'd be happy to share what comparable homes have sold for recently and discuss what your home might command.
+
 `
   } else {
-    content += `Whether buying or selling, this is a healthier market with real opportunities. Local knowledge matters more than ever.
+    content += `Whether you're thinking about buying or selling, this is actually a healthier market than the frenzy we saw before. Decisions can be more thoughtful, negotiations are back, and outcomes tend to be better for everyone involved.
+
 `
   }
 
-  // CALL TO ACTION
+  // Add topic-generated content
+  if (additionalTopics.trim()) {
+    content += generateTopicContent(additionalTopics, communityName)
+  }
+
+  // Investor section
+  if (hasInvestors) {
+    content += `
+FOR INVESTORS
+
+If you're looking at ${communityName} from an investment perspective, the fundamentals remain solid. Rental demand is strong, vacancy rates are low, and entry prices have become more reasonable than they were during the peak.
+
+I'm tracking several properties that fit typical investment criteria. Happy to run the numbers with you on any that might interest you.
+
+`
+  }
+
+  // Senior section
+  if (hasSeniors) {
+    content += `
+55+ COMMUNITY OPTIONS
+
+For those exploring active adult living, ${communityName} has some excellent communities. Many offer the low-maintenance lifestyle, resort-style amenities, and social opportunities that make this stage of life enjoyable.
+
+Several communities are currently offering move-in incentives. I'd enjoy showing you some options.
+
+`
+  }
+
+  // Call to action
   content += `
-🤝 **Let's Connect**
+LET'S RECONNECT
 
-I'd love to chat about what this means for your situation. No pressure - just a conversation.
+I know life gets busy, and real estate plans don't always follow a timeline. But if you've been curious about what's happening in the market, or if your situation has changed, I'd love to catch up.
 
-Reply to this email or call/text anytime!
+No pressure, no sales pitch - just a conversation about where things stand and whether now might be the right time to explore your options.
+
+Feel free to reply to this email, give me a call, or text me. I'm here when you're ready.
+
+Looking forward to hearing from you,
 
 {agent_name}
 
-P.S. - Forward this to anyone who might find it useful!`
+P.S. If you know anyone who might find this information useful, feel free to pass it along.`
 
-  // Generate title
-  let title = `${communityName} Real Estate Update - ${currentMonth} ${currentYear}`
+  let title = `${communityName} Market Update - ${currentMonth} ${currentYear}`
   
   if (hasInvestors && !hasBuyers && !hasSellers) {
-    title = `Investment Report: ${communityName} - ${currentMonth} ${currentYear}`
+    title = `${communityName} Investment Update - ${currentMonth} ${currentYear}`
   } else if (hasSellers && !hasBuyers) {
-    title = `Seller's Market Report: ${communityName}`
+    title = `${communityName} Seller Update - ${currentMonth} ${currentYear}`
   } else if (hasBuyers && !hasSellers) {
-    title = `Buyer's Guide: ${communityName} - ${currentMonth} ${currentYear}`
+    title = `${communityName} Buyer Update - ${currentMonth} ${currentYear}`
   }
 
   return { title, content }
@@ -411,23 +362,18 @@ export default function DripCampaignsPage() {
   const fetchNewsletters = async () => {
     if (!user) return
     setLoading(true)
-    
     const saved = localStorage.getItem(`newsletters_${user.id}`)
-    if (saved) {
-      setNewsletters(JSON.parse(saved))
-    }
+    if (saved) setNewsletters(JSON.parse(saved))
     setLoading(false)
   }
 
   const saveNewsletters = (updated: Newsletter[]) => {
-    if (user) {
-      localStorage.setItem(`newsletters_${user.id}`, JSON.stringify(updated))
-    }
+    if (user) localStorage.setItem(`newsletters_${user.id}`, JSON.stringify(updated))
   }
 
   const generateContent = (withFeedback: boolean = false) => {
     if (!newNewsletter.community.trim()) {
-      alert('Please enter a community/city to highlight')
+      alert('Please enter a community/city')
       return
     }
     if (newNewsletter.audience_type.length === 0) {
@@ -436,7 +382,6 @@ export default function DripCampaignsPage() {
     }
     
     setGenerating(true)
-    
     setTimeout(() => {
       const generated = generateNewsletterContent(
         newNewsletter.community,
@@ -445,11 +390,7 @@ export default function DripCampaignsPage() {
         marketData,
         withFeedback ? additionalTopics : ''
       )
-      setNewNewsletter({
-        ...newNewsletter,
-        title: generated.title,
-        content: generated.content,
-      })
+      setNewNewsletter({ ...newNewsletter, title: generated.title, content: generated.content })
       setGenerating(false)
     }, 1000)
   }
@@ -458,9 +399,7 @@ export default function DripCampaignsPage() {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setUploadedImage(reader.result as string)
-      }
+      reader.onloadend = () => setUploadedImage(reader.result as string)
       reader.readAsDataURL(file)
     }
   }
@@ -469,13 +408,7 @@ export default function DripCampaignsPage() {
     const updated = newNewsletter.audience_type.includes(value)
       ? newNewsletter.audience_type.filter(a => a !== value)
       : [...newNewsletter.audience_type, value]
-    
-    setNewNewsletter({
-      ...newNewsletter,
-      audience_type: updated,
-      content: '',
-      title: '',
-    })
+    setNewNewsletter({ ...newNewsletter, audience_type: updated, content: '', title: '' })
     setAdditionalTopics('')
   }
 
@@ -490,7 +423,6 @@ export default function DripCampaignsPage() {
 
   const saveDraft = () => {
     if (!newNewsletter.title.trim()) return
-    
     const newsletter: Newsletter = {
       id: `nl-${Date.now()}`,
       user_id: user?.id || '',
@@ -505,7 +437,6 @@ export default function DripCampaignsPage() {
       created_at: new Date().toISOString(),
       status: 'draft',
     }
-    
     const updated = [newsletter, ...newsletters]
     setNewsletters(updated)
     saveNewsletters(updated)
@@ -518,7 +449,7 @@ export default function DripCampaignsPage() {
       await navigator.clipboard.writeText(text)
       setCopySuccess(true)
       setTimeout(() => setCopySuccess(false), 3000)
-    } catch (err) {
+    } catch {
       const textarea = document.createElement('textarea')
       textarea.value = text
       document.body.appendChild(textarea)
@@ -532,19 +463,13 @@ export default function DripCampaignsPage() {
 
   const openEmailClient = (newsletter: Newsletter) => {
     const agentName = user?.firstName || 'Your Real Estate Professional'
-    const content = newsletter.content
-      .replace(/\{name\}/g, '')
-      .replace(/\{agent_name\}/g, agentName)
-    
+    const content = newsletter.content.replace(/\{agent_name\}/g, agentName)
     const subject = encodeURIComponent(newsletter.title)
     const body = encodeURIComponent(content)
-    
     window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
     
     const updated = newsletters.map(n => 
-      n.id === newsletter.id 
-        ? { ...n, status: 'sent' as const, sent_at: new Date().toISOString() }
-        : n
+      n.id === newsletter.id ? { ...n, status: 'sent' as const, sent_at: new Date().toISOString() } : n
     )
     setNewsletters(updated)
     saveNewsletters(updated)
@@ -560,14 +485,7 @@ export default function DripCampaignsPage() {
   }
 
   const resetForm = () => {
-    setNewNewsletter({
-      market_focus: 'general',
-      community: '',
-      audience_type: [],
-      lead_status: [],
-      title: '',
-      content: '',
-    })
+    setNewNewsletter({ market_focus: 'general', community: '', audience_type: [], lead_status: [], title: '', content: '' })
     setAdditionalTopics('')
     setMarketData(defaultMarketData)
     setUploadedImage(null)
@@ -575,8 +493,7 @@ export default function DripCampaignsPage() {
   }
 
   const getAudienceCount = (newsletter: Newsletter) => {
-    const base = newsletter.audience_type.length * 12 + newsletter.lead_status.length * 8
-    return base + Math.floor(Math.random() * 10)
+    return newsletter.audience_type.length * 12 + newsletter.lead_status.length * 8 + 5
   }
 
   return (
@@ -584,31 +501,26 @@ export default function DripCampaignsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">📧 Drip Campaigns</h1>
-          <p className="text-gray-400">AI-powered newsletters with real market data</p>
+          <p className="text-gray-400">Re-engage cold leads with valuable market insights</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2">
           <span>✨</span> Create Newsletter
         </button>
       </div>
 
-      {/* Info Card */}
       <div className="card mb-6 bg-gradient-to-r from-primary-500/10 to-blue-500/10 border-primary-500/30">
         <div className="flex items-start gap-4">
           <span className="text-3xl">💡</span>
           <div>
-            <h3 className="font-semibold text-white mb-1">Re-engage Cold Leads with Real Data</h3>
+            <h3 className="font-semibold text-white mb-1">Bring Value, Build Relationships</h3>
             <p className="text-gray-400 text-sm">
-              Enter your market data, suggest topics, and AI generates engaging content. 
-              Mention "infrastructure" or "schools" and watch it create relevant sections.
+              Create newsletters that provide real value. Add your market data, suggest topics, 
+              and AI generates content that encourages cold leads to re-engage.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="card text-center">
           <p className="text-2xl font-bold text-white">{newsletters.length}</p>
@@ -630,50 +542,32 @@ export default function DripCampaignsPage() {
         </div>
       </div>
 
-      {/* Newsletter List */}
       {loading ? (
         <div className="card text-center py-12">
           <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-400">Loading newsletters...</p>
+          <p className="text-gray-400">Loading...</p>
         </div>
       ) : newsletters.length === 0 ? (
         <div className="card text-center py-12">
           <span className="text-4xl mb-4 block">📬</span>
           <p className="text-gray-400 mb-2">No newsletters yet</p>
-          <p className="text-gray-500 text-sm mb-6">
-            Create newsletters with YOUR real market data and send to cold leads.
-          </p>
-          <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-            ✨ Create Your First Newsletter
-          </button>
+          <p className="text-gray-500 text-sm mb-6">Create value-driven newsletters to re-engage your cold leads.</p>
+          <button onClick={() => setShowCreateModal(true)} className="btn-primary">✨ Create Your First Newsletter</button>
         </div>
       ) : (
         <div className="space-y-3">
           {newsletters.map(newsletter => (
-            <div
-              key={newsletter.id}
-              onClick={() => setSelectedNewsletter(newsletter)}
-              className="card cursor-pointer hover:border-primary-500/50 transition-all"
-            >
+            <div key={newsletter.id} onClick={() => setSelectedNewsletter(newsletter)} className="card cursor-pointer hover:border-primary-500/50 transition-all">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-white">{newsletter.title}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      newsletter.status === 'sent' 
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${newsletter.status === 'sent' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                       {newsletter.status === 'sent' ? '✓ Sent' : 'Draft'}
                     </span>
-                    {newsletter.image_url && <span className="text-xs text-blue-400">📎</span>}
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-gray-500">
                     <span>📍 {newsletter.community}</span>
-                    <span>•</span>
-                    <span>👥 {newsletter.audience_type.map(a => 
-                      audienceTypes.find(t => t.value === a)?.label.split(' ')[1]
-                    ).join(', ')}</span>
                     <span>•</span>
                     <span>{new Date(newsletter.created_at).toLocaleDateString()}</span>
                   </div>
@@ -685,318 +579,157 @@ export default function DripCampaignsPage() {
         </div>
       )}
 
-      {/* Create Newsletter Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-dark-border flex items-center justify-between flex-shrink-0">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">✨ Create Newsletter</h2>
-              <button onClick={() => { setShowCreateModal(false); resetForm(); }} className="text-gray-400 hover:text-white">
-                ✕
-              </button>
+              <button onClick={() => { setShowCreateModal(false); resetForm(); }} className="text-gray-400 hover:text-white">✕</button>
             </div>
             
             <div className="p-6 space-y-5 overflow-y-auto flex-1">
-              {/* Community Highlight */}
               <div>
-                <label className="block text-gray-400 text-sm mb-2">Community Highlight</label>
+                <label className="block text-gray-400 text-sm mb-2">Community / Market Area</label>
                 <input
                   type="text"
                   value={newNewsletter.community}
                   onChange={(e) => setNewNewsletter({ ...newNewsletter, community: e.target.value, content: '', title: '' })}
-                  placeholder="e.g., Clermont FL, Central Florida, Orlando Metro..."
+                  placeholder="e.g., Clermont, Central Florida, Orlando Metro..."
                   className="input-field w-full"
                 />
               </div>
 
-              {/* Market Data Toggle */}
               <div>
-                <button
-                  onClick={() => setShowMarketData(!showMarketData)}
-                  className="flex items-center gap-2 text-primary-400 text-sm hover:underline"
-                >
-                  📊 {showMarketData ? 'Hide' : 'Enter'} Real Market Data
-                  <span>{showMarketData ? '▲' : '▼'}</span>
+                <button onClick={() => setShowMarketData(!showMarketData)} className="flex items-center gap-2 text-primary-400 text-sm hover:underline">
+                  📊 {showMarketData ? 'Hide' : 'Add'} Your Market Data (Optional)
                 </button>
                 
                 {showMarketData && (
                   <div className="mt-3 p-4 bg-dark-bg rounded-lg space-y-3">
-                    <p className="text-xs text-gray-500 mb-2">Enter YOUR actual market data:</p>
-                    
+                    <p className="text-xs text-gray-500">Enter real data (leave blank if unsure):</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-gray-500">Interest Rate (%)</label>
-                        <input
-                          type="text"
-                          value={marketData.interestRate}
-                          onChange={(e) => setMarketData({ ...marketData, interestRate: e.target.value })}
-                          placeholder="6.5"
-                          className="input-field w-full text-sm"
-                        />
+                        <input type="text" value={marketData.interestRate} onChange={(e) => setMarketData({ ...marketData, interestRate: e.target.value })} placeholder="e.g., 6.5" className="input-field w-full text-sm" />
                       </div>
                       <div>
                         <label className="text-xs text-gray-500">Price Change (%)</label>
-                        <input
-                          type="text"
-                          value={marketData.priceChange}
-                          onChange={(e) => setMarketData({ ...marketData, priceChange: e.target.value })}
-                          placeholder="+3.2 or -2.5"
-                          className="input-field w-full text-sm"
-                        />
+                        <input type="text" value={marketData.priceChange} onChange={(e) => setMarketData({ ...marketData, priceChange: e.target.value })} placeholder="e.g., +3" className="input-field w-full text-sm" />
                       </div>
                       <div>
                         <label className="text-xs text-gray-500">Price Range Low ($)</label>
-                        <input
-                          type="text"
-                          value={marketData.priceRangeLow}
-                          onChange={(e) => setMarketData({ ...marketData, priceRangeLow: e.target.value })}
-                          placeholder="380000"
-                          className="input-field w-full text-sm"
-                        />
+                        <input type="text" value={marketData.priceRangeLow} onChange={(e) => setMarketData({ ...marketData, priceRangeLow: e.target.value })} placeholder="e.g., 350000" className="input-field w-full text-sm" />
                       </div>
                       <div>
                         <label className="text-xs text-gray-500">Price Range High ($)</label>
-                        <input
-                          type="text"
-                          value={marketData.priceRangeHigh}
-                          onChange={(e) => setMarketData({ ...marketData, priceRangeHigh: e.target.value })}
-                          placeholder="450000"
-                          className="input-field w-full text-sm"
-                        />
+                        <input type="text" value={marketData.priceRangeHigh} onChange={(e) => setMarketData({ ...marketData, priceRangeHigh: e.target.value })} placeholder="e.g., 500000" className="input-field w-full text-sm" />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500">Avg Days on Market</label>
-                        <input
-                          type="text"
-                          value={marketData.avgDaysOnMarket}
-                          onChange={(e) => setMarketData({ ...marketData, avgDaysOnMarket: e.target.value })}
-                          placeholder="45"
-                          className="input-field w-full text-sm"
-                        />
+                        <label className="text-xs text-gray-500">Days on Market</label>
+                        <input type="text" value={marketData.avgDaysOnMarket} onChange={(e) => setMarketData({ ...marketData, avgDaysOnMarket: e.target.value })} placeholder="e.g., 45" className="input-field w-full text-sm" />
                       </div>
                       <div>
                         <label className="text-xs text-gray-500">Inventory Change (%)</label>
-                        <input
-                          type="text"
-                          value={marketData.inventoryChange}
-                          onChange={(e) => setMarketData({ ...marketData, inventoryChange: e.target.value })}
-                          placeholder="+30 or -10"
-                          className="input-field w-full text-sm"
-                        />
+                        <input type="text" value={marketData.inventoryChange} onChange={(e) => setMarketData({ ...marketData, inventoryChange: e.target.value })} placeholder="e.g., +30" className="input-field w-full text-sm" />
                       </div>
-                    </div>
-                    
-                    <p className="text-xs text-gray-500 mt-3">Hot Neighborhoods (optional):</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        value={marketData.hotNeighborhood1}
-                        onChange={(e) => setMarketData({ ...marketData, hotNeighborhood1: e.target.value })}
-                        placeholder="Neighborhood 1"
-                        className="input-field w-full text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={marketData.hotNeighborhood1Change}
-                        onChange={(e) => setMarketData({ ...marketData, hotNeighborhood1Change: e.target.value })}
-                        placeholder="% change"
-                        className="input-field w-full text-sm"
-                      />
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Image Upload */}
               <div>
-                <label className="block text-gray-400 text-sm mb-2">📎 Attach Market Snapshot (Optional)</label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
+                <label className="block text-gray-400 text-sm mb-2">📎 Attach Infographic (Optional)</label>
+                <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} className="hidden" />
                 {uploadedImage ? (
                   <div className="relative">
-                    <img src={uploadedImage} alt="Market snapshot" className="w-full h-32 object-cover rounded-lg" />
-                    <button
-                      onClick={() => setUploadedImage(null)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
-                    >
-                      ✕
-                    </button>
+                    <img src={uploadedImage} alt="Infographic" className="w-full h-32 object-cover rounded-lg" />
+                    <button onClick={() => setUploadedImage(null)} className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">✕</button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full p-4 border-2 border-dashed border-dark-border rounded-lg text-gray-400 hover:border-primary-500 hover:text-primary-400 transition-colors"
-                  >
-                    📷 Click to upload infographic
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full p-3 border-2 border-dashed border-dark-border rounded-lg text-gray-500 hover:border-primary-500 hover:text-primary-400 transition-colors text-sm">
+                    Click to upload market snapshot
                   </button>
                 )}
               </div>
 
-              {/* Market Focus */}
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Market Focus</label>
-                <select
-                  value={newNewsletter.market_focus}
-                  onChange={(e) => setNewNewsletter({ ...newNewsletter, market_focus: e.target.value, content: '', title: '' })}
-                  className="input-field w-full"
-                >
-                  {marketFocusOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
+                <select value={newNewsletter.market_focus} onChange={(e) => setNewNewsletter({ ...newNewsletter, market_focus: e.target.value, content: '', title: '' })} className="input-field w-full">
+                  {marketFocusOptions.map(option => (<option key={option.value} value={option.value}>{option.label}</option>))}
                 </select>
               </div>
 
-              {/* Audience Type */}
               <div>
-                <label className="block text-gray-400 text-sm mb-2">Send To (Audience Type)</label>
+                <label className="block text-gray-400 text-sm mb-2">Target Audience</label>
                 <div className="flex flex-wrap gap-2">
                   {audienceTypes.map(audience => (
-                    <button
-                      key={audience.value}
-                      onClick={() => toggleAudience(audience.value)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                        newNewsletter.audience_type.includes(audience.value)
-                          ? 'bg-primary-500/20 text-primary-400 border border-primary-500'
-                          : 'bg-dark-bg text-gray-400 border border-dark-border hover:text-white'
-                      }`}
-                    >
+                    <button key={audience.value} onClick={() => toggleAudience(audience.value)} className={`px-4 py-2 rounded-lg text-sm transition-all ${newNewsletter.audience_type.includes(audience.value) ? 'bg-primary-500/20 text-primary-400 border border-primary-500' : 'bg-dark-bg text-gray-400 border border-dark-border hover:text-white'}`}>
                       {audience.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Lead Status */}
               <div>
-                <label className="block text-gray-400 text-sm mb-2">Target Lead Status</label>
+                <label className="block text-gray-400 text-sm mb-2">Lead Status</label>
                 <div className="flex flex-wrap gap-2">
                   {leadStatuses.map(status => (
-                    <button
-                      key={status.value}
-                      onClick={() => toggleStatus(status.value)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                        newNewsletter.lead_status.includes(status.value)
-                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500'
-                          : 'bg-dark-bg text-gray-400 border border-dark-border hover:text-white'
-                      }`}
-                    >
+                    <button key={status.value} onClick={() => toggleStatus(status.value)} className={`px-4 py-2 rounded-lg text-sm transition-all ${newNewsletter.lead_status.includes(status.value) ? 'bg-blue-500/20 text-blue-400 border border-blue-500' : 'bg-dark-bg text-gray-400 border border-dark-border hover:text-white'}`}>
                       {status.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Generate Button */}
               {!newNewsletter.content && (
-                <button
-                  onClick={() => generateContent(false)}
-                  disabled={generating || !newNewsletter.community.trim() || newNewsletter.audience_type.length === 0}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                >
-                  {generating ? (
-                    <>
-                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>✨ Generate Newsletter</>
-                  )}
+                <button onClick={() => generateContent(false)} disabled={generating || !newNewsletter.community.trim() || newNewsletter.audience_type.length === 0} className="btn-primary w-full">
+                  {generating ? 'Generating...' : '✨ Generate Newsletter'}
                 </button>
               )}
 
-              {/* Generated Content */}
               {newNewsletter.content && (
                 <div className="space-y-4">
                   <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
-                    <p className="text-green-400 text-sm">✓ Newsletter generated!</p>
+                    <p className="text-green-400 text-sm">✓ Newsletter ready! Review and edit as needed.</p>
                   </div>
                   
                   <div>
                     <label className="block text-gray-400 text-sm mb-1">Subject Line</label>
-                    <input
-                      type="text"
-                      value={newNewsletter.title}
-                      onChange={(e) => setNewNewsletter({ ...newNewsletter, title: e.target.value })}
-                      className="input-field w-full"
-                    />
+                    <input type="text" value={newNewsletter.title} onChange={(e) => setNewNewsletter({ ...newNewsletter, title: e.target.value })} className="input-field w-full" />
                   </div>
                   
                   <div>
-                    <label className="block text-gray-400 text-sm mb-1">Newsletter Content</label>
-                    <textarea
-                      value={newNewsletter.content}
-                      onChange={(e) => setNewNewsletter({ ...newNewsletter, content: e.target.value })}
-                      className="input-field w-full text-sm"
-                      rows={10}
-                    />
+                    <label className="block text-gray-400 text-sm mb-1">Content</label>
+                    <textarea value={newNewsletter.content} onChange={(e) => setNewNewsletter({ ...newNewsletter, content: e.target.value })} className="input-field w-full text-sm" rows={12} />
                   </div>
 
-                  {/* Regenerate with Topic Suggestions */}
                   <div className="bg-dark-bg rounded-lg p-4 space-y-3">
-                    <label className="block text-gray-400 text-sm">
-                      🎯 Want AI to add more content? Describe what to include:
-                    </label>
-                    <textarea
-                      value={additionalTopics}
-                      onChange={(e) => setAdditionalTopics(e.target.value)}
-                      placeholder="Examples:
-• infrastructure projects improving commute
-• new construction builder incentives
-• top-rated schools in the area
-• 55+ community options
-• investment opportunities and rental demand"
-                      className="input-field w-full text-sm"
-                      rows={3}
-                    />
-                    <button
-                      onClick={() => generateContent(true)}
-                      disabled={generating || !additionalTopics.trim()}
-                      className="w-full px-4 py-2 bg-dark-border text-white rounded-lg hover:bg-primary-500/20 transition-colors disabled:opacity-50"
-                    >
-                      {generating ? 'Generating...' : '✨ Regenerate with This Topic'}
+                    <label className="block text-gray-400 text-sm">🎯 Add a topic for AI to write about:</label>
+                    <textarea value={additionalTopics} onChange={(e) => setAdditionalTopics(e.target.value)} placeholder="Examples: infrastructure improvements, new construction incentives, school ratings, investment opportunities, 55+ communities" className="input-field w-full text-sm" rows={2} />
+                    <button onClick={() => generateContent(true)} disabled={generating || !additionalTopics.trim()} className="w-full px-4 py-2 bg-dark-border text-white rounded-lg hover:bg-primary-500/20 transition-colors disabled:opacity-50">
+                      {generating ? 'Generating...' : '✨ Add Topic & Regenerate'}
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-6 border-t border-dark-border flex gap-3 flex-shrink-0">
-              <button 
-                onClick={() => { setShowCreateModal(false); resetForm(); }} 
-                className="btn-secondary flex-1"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={saveDraft}
-                disabled={!newNewsletter.title.trim()}
-                className="btn-primary flex-1"
-              >
-                💾 Save Draft
-              </button>
+            <div className="p-6 border-t border-dark-border flex gap-3">
+              <button onClick={() => { setShowCreateModal(false); resetForm(); }} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={saveDraft} disabled={!newNewsletter.title.trim()} className="btn-primary flex-1">💾 Save Draft</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Newsletter Detail Modal */}
       {selectedNewsletter && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-dark-border flex items-center justify-between flex-shrink-0">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white">{selectedNewsletter.title}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    selectedNewsletter.status === 'sent' 
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-yellow-500/20 text-yellow-400'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${selectedNewsletter.status === 'sent' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                     {selectedNewsletter.status === 'sent' ? '✓ Sent' : 'Draft'}
                   </span>
                   <span className="text-gray-500 text-sm">📍 {selectedNewsletter.community}</span>
@@ -1009,59 +742,37 @@ export default function DripCampaignsPage() {
               {selectedNewsletter.image_url && (
                 <div>
                   <p className="text-gray-400 text-sm mb-2">📎 Attached Image</p>
-                  <img src={selectedNewsletter.image_url} alt="Market snapshot" className="w-full rounded-lg" />
+                  <img src={selectedNewsletter.image_url} alt="Infographic" className="w-full rounded-lg" />
                 </div>
               )}
 
               <div>
-                <p className="text-gray-400 text-sm mb-2">Content Preview</p>
+                <p className="text-gray-400 text-sm mb-2">Content</p>
                 <div className="bg-dark-bg rounded-lg p-4 max-h-64 overflow-y-auto">
                   <p className="text-white whitespace-pre-wrap text-sm">{selectedNewsletter.content}</p>
                 </div>
               </div>
 
               {copySuccess && (
-                <div className="bg-green-500/20 text-green-400 p-3 rounded-lg text-sm text-center">
-                  ✓ Copied to clipboard!
-                </div>
+                <div className="bg-green-500/20 text-green-400 p-3 rounded-lg text-sm text-center">✓ Copied to clipboard!</div>
               )}
             </div>
 
-            <div className="p-6 border-t border-dark-border space-y-3 flex-shrink-0">
+            <div className="p-6 border-t border-dark-border space-y-3">
               {selectedNewsletter.status === 'draft' && (
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
                   <p className="text-blue-400 font-medium mb-1">📧 How to Send:</p>
-                  <p className="text-gray-400 text-xs">
-                    "Open in Email" opens your email app with content pre-filled. Add recipients there.
-                    For bulk sends, "Copy" and paste into your CRM or email tool.
-                  </p>
+                  <p className="text-gray-400 text-xs">"Open in Email" opens your email app with content pre-filled. Add your recipients there. Or "Copy" to paste into your CRM.</p>
                 </div>
               )}
               
               <div className="flex gap-3">
-                <button 
-                  onClick={() => deleteNewsletter(selectedNewsletter.id)}
-                  className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30"
-                >
-                  Delete
-                </button>
-                <button 
-                  onClick={() => copyToClipboard(selectedNewsletter.content)}
-                  className="px-4 py-2 bg-dark-border text-white rounded-lg hover:bg-primary-500/20"
-                >
-                  📋 Copy
-                </button>
+                <button onClick={() => deleteNewsletter(selectedNewsletter.id)} className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30">Delete</button>
+                <button onClick={() => copyToClipboard(selectedNewsletter.content)} className="px-4 py-2 bg-dark-border text-white rounded-lg hover:bg-primary-500/20">📋 Copy</button>
                 {selectedNewsletter.status === 'draft' ? (
-                  <button 
-                    onClick={() => openEmailClient(selectedNewsletter)}
-                    className="btn-primary flex-1"
-                  >
-                    📧 Open in Email
-                  </button>
+                  <button onClick={() => openEmailClient(selectedNewsletter)} className="btn-primary flex-1">📧 Open in Email</button>
                 ) : (
-                  <button onClick={() => setSelectedNewsletter(null)} className="btn-secondary flex-1">
-                    Close
-                  </button>
+                  <button onClick={() => setSelectedNewsletter(null)} className="btn-secondary flex-1">Close</button>
                 )}
               </div>
             </div>

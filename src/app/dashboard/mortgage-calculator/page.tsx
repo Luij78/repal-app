@@ -4,449 +4,440 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export default function MortgageCalculatorPage() {
-  // Loan Details
-  const [homePrice, setHomePrice] = useState('')
-  const [downPayment, setDownPayment] = useState('')
-  const [downPaymentPercent, setDownPaymentPercent] = useState('20')
-  const [interestRate, setInterestRate] = useState('7.0')
-  const [loanTerm, setLoanTerm] = useState('30')
-  const [loanType, setLoanType] = useState('conventional')
-  
-  // Additional Costs
-  const [propertyTax, setPropertyTax] = useState('')
-  const [homeInsurance, setHomeInsurance] = useState('')
-  const [pmi, setPmi] = useState('0.5')
-  const [hoa, setHoa] = useState('0')
-  
-  // Use percentage or fixed amount for down payment
-  const [usePercent, setUsePercent] = useState(true)
+  const [homePrice, setHomePrice] = useState(350000)
+  const [downPaymentPercent, setDownPaymentPercent] = useState(5)
+  const [mortgageTerm, setMortgageTerm] = useState(30)
+  const [interestRate, setInterestRate] = useState(7)
+  const [propertyTaxPercent, setPropertyTaxPercent] = useState(1)
+  const [insurancePercent, setInsurancePercent] = useState(0.5)
+  const [hoaFees, setHoaFees] = useState(125)
 
-  // Sync down payment with percentage
+  // Temp display values for text inputs
+  const [tempHomePrice, setTempHomePrice] = useState('350,000')
+  const [tempDownPayment, setTempDownPayment] = useState('17,500')
+  const [tempPropertyTax, setTempPropertyTax] = useState('3,500')
+  const [tempInsurance, setTempInsurance] = useState('1,750')
+  const [tempHoa, setTempHoa] = useState('125')
+
+  // Sync temp values when sliders change
   useEffect(() => {
-    if (usePercent && homePrice) {
-      const price = parseFloat(homePrice) || 0
-      const percent = parseFloat(downPaymentPercent) || 0
-      setDownPayment((price * percent / 100).toFixed(0))
-    }
-  }, [homePrice, downPaymentPercent, usePercent])
+    setTempHomePrice(homePrice.toLocaleString())
+  }, [homePrice])
 
-  // Calculate mortgage
-  const calculateMortgage = () => {
-    const price = parseFloat(homePrice) || 0
-    const down = parseFloat(downPayment) || 0
-    const rate = parseFloat(interestRate) || 0
-    const term = parseInt(loanTerm) || 30
-    const tax = parseFloat(propertyTax) || 0
-    const insurance = parseFloat(homeInsurance) || 0
-    const pmiRate = parseFloat(pmi) || 0
-    const hoaFee = parseFloat(hoa) || 0
+  useEffect(() => {
+    setTempDownPayment(Math.round(homePrice * downPaymentPercent / 100).toLocaleString())
+  }, [homePrice, downPaymentPercent])
 
-    const loanAmount = price - down
-    const downPaymentPct = price > 0 ? (down / price) * 100 : 0
-    const monthlyRate = (rate / 100) / 12
-    const numPayments = term * 12
+  useEffect(() => {
+    setTempPropertyTax(Math.round(homePrice * propertyTaxPercent / 100).toLocaleString())
+  }, [homePrice, propertyTaxPercent])
 
-    // Monthly P&I
-    let monthlyPI = 0
-    if (monthlyRate > 0) {
-      monthlyPI = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1)
-    } else {
-      monthlyPI = loanAmount / numPayments
-    }
+  useEffect(() => {
+    setTempInsurance(Math.round(homePrice * insurancePercent / 100).toLocaleString())
+  }, [homePrice, insurancePercent])
 
-    // Monthly property tax
-    const monthlyTax = tax / 12
+  useEffect(() => {
+    setTempHoa(hoaFees.toLocaleString())
+  }, [hoaFees])
 
-    // Monthly insurance
-    const monthlyInsurance = insurance / 12
+  // Calculated values
+  const downPaymentAmount = Math.round(homePrice * downPaymentPercent / 100)
+  const propertyTaxAmount = Math.round(homePrice * propertyTaxPercent / 100)
+  const insuranceAmount = Math.round(homePrice * insurancePercent / 100)
+  const loanAmount = homePrice - downPaymentAmount
 
-    // PMI (only if down payment < 20%)
-    let monthlyPMI = 0
-    if (downPaymentPct < 20 && loanType === 'conventional') {
-      monthlyPMI = (loanAmount * (pmiRate / 100)) / 12
-    }
+  const monthlyRate = interestRate / 100 / 12
+  const numPayments = mortgageTerm * 12
+  const monthlyPI = monthlyRate > 0 ? (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1) : loanAmount / numPayments
+  const monthlyTax = propertyTaxAmount / 12
+  const monthlyInsurance = insuranceAmount / 12
+  const totalMonthly = monthlyPI + monthlyTax + monthlyInsurance + hoaFees
+  const totalInterest = (monthlyPI * numPayments) - loanAmount
 
-    // FHA MIP
-    let monthlyMIP = 0
-    if (loanType === 'fha') {
-      // Upfront MIP is 1.75%, annual MIP is 0.85% for most loans
-      monthlyMIP = (loanAmount * 0.0085) / 12
-    }
+  const formatCurrency = (num: number) => '$' + Math.round(num).toLocaleString()
 
-    // VA funding fee is usually rolled into loan, no monthly PMI
-    // USDA has 0.35% annual fee
-    let monthlyUSDA = 0
-    if (loanType === 'usda') {
-      monthlyUSDA = (loanAmount * 0.0035) / 12
-    }
-
-    // Total monthly payment
-    const totalMonthly = monthlyPI + monthlyTax + monthlyInsurance + monthlyPMI + monthlyMIP + monthlyUSDA + hoaFee
-
-    // Total interest over life of loan
-    const totalPayments = monthlyPI * numPayments
-    const totalInterest = totalPayments - loanAmount
-
-    // Generate amortization (first year)
-    const amortization = []
-    let balance = loanAmount
-    for (let i = 1; i <= 12; i++) {
-      const interestPayment = balance * monthlyRate
-      const principalPayment = monthlyPI - interestPayment
-      balance -= principalPayment
-      amortization.push({
-        month: i,
-        principal: principalPayment,
-        interest: interestPayment,
-        balance: balance
-      })
-    }
-
-    return {
-      homePrice: price,
-      downPayment: down,
-      downPaymentPercent: downPaymentPct,
-      loanAmount,
-      monthlyPI,
-      monthlyTax,
-      monthlyInsurance,
-      monthlyPMI,
-      monthlyMIP,
-      monthlyUSDA,
-      hoaFee,
-      totalMonthly,
-      totalPayments,
-      totalInterest,
-      amortization
-    }
+  // Slider background gradient
+  const getSliderBg = (val: number, min: number, max: number) => {
+    const percent = ((val - min) / (max - min)) * 100
+    return `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${percent}%, #374151 ${percent}%, #374151 100%)`
   }
 
-  const results = calculateMortgage()
-
-  const formatCurrency = (num: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num)
-  }
-
-  const formatCurrencyDecimal = (num: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num)
-  }
-
-  // Calculate percentage for pie chart
-  const getPercentage = (value: number) => {
-    if (results.totalMonthly === 0) return 0
-    return (value / results.totalMonthly) * 100
-  }
+  // Dark mode input box styles
+  const inputBoxStyle = "flex items-center bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg overflow-hidden"
+  const textInputStyle = "w-[90px] p-2 bg-transparent border-none text-[#E8E4DC] text-sm text-right outline-none"
+  const clearBtnStyle = "px-3 py-2 bg-transparent border-l border-[#2A2A2A] text-gray-500 cursor-pointer hover:text-gray-300"
 
   return (
-    <div className="animate-fade-in max-w-4xl mx-auto">
-      {/* Header */}
+    <div className="animate-fade-in max-w-2xl mx-auto pb-8">
+      <style jsx global>{`
+        .smooth-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 100%;
+          height: 20px;
+          background: transparent;
+          outline: none;
+          cursor: pointer;
+        }
+        .smooth-slider::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 4px;
+          border-radius: 4px;
+        }
+        .smooth-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 2px solid #3B82F6;
+          cursor: pointer;
+          margin-top: -8px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .smooth-slider::-moz-range-track {
+          width: 100%;
+          height: 4px;
+          border-radius: 4px;
+        }
+        .smooth-slider::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 2px solid #3B82F6;
+          cursor: pointer;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+      `}</style>
+
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-            🏦 Mortgage Calculator
-          </h1>
-          <p className="text-gray-400 text-sm">Calculate your monthly mortgage payment</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">🏦 Mortgage Calculator</h1>
+          <p className="text-gray-400 text-sm">Calculate your estimated monthly mortgage payment</p>
         </div>
-        <Link href="/dashboard" className="text-primary-400 hover:underline text-sm">
-          ← Dashboard
-        </Link>
+        <Link href="/dashboard" className="text-primary-400 hover:underline text-sm">← Dashboard</Link>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Input Section */}
-        <div className="space-y-4">
-          {/* Loan Details */}
-          <div className="card">
-            <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-              <span>🏠</span> Loan Details
-            </h2>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Home Price</label>
+      {/* Results Summary Card */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 mb-6 text-white">
+        <div className="grid grid-cols-2 gap-6 mb-4">
+          <div className="text-center">
+            <p className="text-sm opacity-80 mb-1">Monthly Payment</p>
+            <p className="text-3xl sm:text-4xl font-bold">{formatCurrency(totalMonthly)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm opacity-80 mb-1">Loan Amount</p>
+            <p className="text-2xl font-semibold">{formatCurrency(loanAmount)}</p>
+          </div>
+        </div>
+        <div className="pt-4 border-t border-white/20 grid grid-cols-2 gap-3 text-sm">
+          <div className="flex justify-between"><span className="opacity-80">Principal & Interest</span><span className="font-semibold">{formatCurrency(monthlyPI)}</span></div>
+          <div className="flex justify-between"><span className="opacity-80">Property Tax</span><span className="font-semibold">{formatCurrency(monthlyTax)}</span></div>
+          <div className="flex justify-between"><span className="opacity-80">Insurance</span><span className="font-semibold">{formatCurrency(monthlyInsurance)}</span></div>
+          <div className="flex justify-between"><span className="opacity-80">HOA</span><span className="font-semibold">{formatCurrency(hoaFees)}</span></div>
+        </div>
+      </div>
+
+      {/* Input Fields */}
+      <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-[#2A2A2A]">
+
+        {/* Home Price */}
+        <div className="mb-7">
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-[#E8E4DC] font-medium">Home Price</label>
+            <div className={inputBoxStyle}>
+              <span className="pl-3 pr-0 py-2 text-gray-500">$</span>
+              <input
+                type="text"
+                value={tempHomePrice}
+                onChange={(e) => setTempHomePrice(e.target.value)}
+                onBlur={(e) => {
+                  const num = parseFloat(e.target.value.replace(/,/g, '')) || 0
+                  setHomePrice(num)
+                  setTempHomePrice(num.toLocaleString())
+                }}
+                className={textInputStyle}
+              />
+              <button onClick={() => { setHomePrice(0); setTempHomePrice('0') }} className={clearBtnStyle}>✕</button>
+            </div>
+          </div>
+          <input
+            type="range"
+            className="smooth-slider w-full mt-2"
+            min={50000}
+            max={2000000}
+            step={5000}
+            value={homePrice}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value)
+              setHomePrice(val)
+              setTempHomePrice(val.toLocaleString())
+            }}
+            style={{ background: getSliderBg(homePrice, 50000, 2000000) }}
+          />
+        </div>
+
+        {/* Down Payment */}
+        <div className="mb-7">
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-[#E8E4DC] font-medium">Down Payment</label>
+            <div className="flex gap-2">
+              <div className={inputBoxStyle}>
                 <input
-                  type="number"
-                  value={homePrice}
-                  onChange={(e) => setHomePrice(e.target.value)}
-                  placeholder="400000"
-                  className="input w-full"
+                  type="text"
+                  value={downPaymentPercent}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0
+                    setDownPaymentPercent(Math.min(100, Math.max(0, val)))
+                  }}
+                  className={`${textInputStyle} w-[50px]`}
                 />
+                <span className="pr-2 py-2 text-gray-500">%</span>
+                <button onClick={() => setDownPaymentPercent(0)} className={clearBtnStyle}>✕</button>
               </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Down Payment</label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={usePercent ? downPaymentPercent : downPayment}
-                    onChange={(e) => {
-                      if (usePercent) {
-                        setDownPaymentPercent(e.target.value)
-                      } else {
-                        setDownPayment(e.target.value)
-                      }
-                    }}
-                    className="input flex-1"
-                  />
-                  <button
-                    onClick={() => setUsePercent(!usePercent)}
-                    className="px-3 py-2 bg-dark-border rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
-                  >
-                    {usePercent ? '%' : '$'}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {usePercent ? formatCurrency(results.downPayment) : `${results.downPaymentPercent.toFixed(1)}%`}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Loan Type</label>
-                <select
-                  value={loanType}
-                  onChange={(e) => setLoanType(e.target.value)}
-                  className="input w-full"
-                >
-                  <option value="conventional">Conventional</option>
-                  <option value="fha">FHA</option>
-                  <option value="va">VA</option>
-                  <option value="usda">USDA</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Interest Rate %</label>
-                  <input
-                    type="number"
-                    step="0.125"
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(e.target.value)}
-                    className="input w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Loan Term</label>
-                  <select
-                    value={loanTerm}
-                    onChange={(e) => setLoanTerm(e.target.value)}
-                    className="input w-full"
-                  >
-                    <option value="30">30 years</option>
-                    <option value="20">20 years</option>
-                    <option value="15">15 years</option>
-                    <option value="10">10 years</option>
-                  </select>
-                </div>
+              <div className={inputBoxStyle}>
+                <span className="pl-2 pr-0 py-2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  value={tempDownPayment}
+                  onChange={(e) => setTempDownPayment(e.target.value)}
+                  onBlur={(e) => {
+                    const num = parseFloat(e.target.value.replace(/,/g, '')) || 0
+                    const percent = homePrice > 0 ? (num / homePrice) * 100 : 0
+                    setDownPaymentPercent(Math.round(percent * 10) / 10)
+                    setTempDownPayment(Math.round(homePrice * percent / 100).toLocaleString())
+                  }}
+                  className={`${textInputStyle} w-[80px]`}
+                />
+                <button onClick={() => { setDownPaymentPercent(0); setTempDownPayment('0') }} className={clearBtnStyle}>✕</button>
               </div>
             </div>
           </div>
+          <input
+            type="range"
+            className="smooth-slider w-full mt-2"
+            min={0}
+            max={50}
+            step={0.5}
+            value={downPaymentPercent}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value)
+              setDownPaymentPercent(val)
+              setTempDownPayment(Math.round(homePrice * val / 100).toLocaleString())
+            }}
+            style={{ background: getSliderBg(downPaymentPercent, 0, 50) }}
+          />
+        </div>
 
-          {/* Additional Costs */}
-          <div className="card">
-            <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-              <span>💵</span> Additional Costs
-            </h2>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Property Tax/yr</label>
-                  <input
-                    type="number"
-                    value={propertyTax}
-                    onChange={(e) => setPropertyTax(e.target.value)}
-                    placeholder="4800"
-                    className="input w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Insurance/yr</label>
-                  <input
-                    type="number"
-                    value={homeInsurance}
-                    onChange={(e) => setHomeInsurance(e.target.value)}
-                    placeholder="1800"
-                    className="input w-full"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">PMI Rate % (if &lt;20% down)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={pmi}
-                    onChange={(e) => setPmi(e.target.value)}
-                    className="input w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">HOA/mo</label>
-                  <input
-                    type="number"
-                    value={hoa}
-                    onChange={(e) => setHoa(e.target.value)}
-                    placeholder="0"
-                    className="input w-full"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Loan Type Info */}
-          <div className="card bg-blue-500/10 border-blue-500/30">
-            <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
-              <span>ℹ️</span> {loanType.toUpperCase()} Loan Info
-            </h3>
-            <p className="text-sm text-gray-400">
-              {loanType === 'conventional' && 'Conventional loans require minimum 3-5% down. PMI required if down payment is less than 20%.'}
-              {loanType === 'fha' && 'FHA loans require minimum 3.5% down with 580+ credit score. MIP (mortgage insurance) is required for the life of the loan.'}
-              {loanType === 'va' && 'VA loans are available to eligible veterans with 0% down. No PMI required. Funding fee may apply.'}
-              {loanType === 'usda' && 'USDA loans are for rural areas with 0% down for eligible buyers. Annual guarantee fee of 0.35% applies.'}
-            </p>
+        {/* Mortgage Term */}
+        <div className="mb-7">
+          <div className="flex justify-between items-center">
+            <label className="text-[#E8E4DC] font-medium">Mortgage Term</label>
+            <select
+              value={mortgageTerm}
+              onChange={(e) => setMortgageTerm(parseInt(e.target.value))}
+              className="py-2 px-4 bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg text-[#E8E4DC] cursor-pointer outline-none"
+            >
+              <option value={10}>10 years</option>
+              <option value={15}>15 years</option>
+              <option value={20}>20 years</option>
+              <option value={30}>30 years</option>
+            </select>
           </div>
         </div>
 
-        {/* Results Section */}
-        <div className="space-y-4">
-          {/* Monthly Payment */}
-          <div className="card bg-gradient-to-br from-primary-500/10 to-blue-500/10 border-primary-500/30">
-            <div className="text-center mb-4">
-              <p className="text-gray-400 text-sm">Monthly Payment</p>
-              <p className="text-4xl sm:text-5xl font-bold text-white">{formatCurrency(results.totalMonthly)}</p>
-            </div>
-            
-            {/* Payment Breakdown Bar */}
-            <div className="h-4 rounded-full overflow-hidden flex mb-4">
-              <div 
-                className="bg-blue-500" 
-                style={{ width: `${getPercentage(results.monthlyPI)}%` }}
-                title="Principal & Interest"
+        {/* Interest Rate */}
+        <div className="mb-7">
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-[#E8E4DC] font-medium">Interest Rate</label>
+            <div className={inputBoxStyle}>
+              <input
+                type="text"
+                value={interestRate}
+                onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
+                className={`${textInputStyle} w-[50px]`}
               />
-              <div 
-                className="bg-green-500" 
-                style={{ width: `${getPercentage(results.monthlyTax)}%` }}
-                title="Property Tax"
-              />
-              <div 
-                className="bg-yellow-500" 
-                style={{ width: `${getPercentage(results.monthlyInsurance)}%` }}
-                title="Insurance"
-              />
-              <div 
-                className="bg-red-500" 
-                style={{ width: `${getPercentage(results.monthlyPMI + results.monthlyMIP + results.monthlyUSDA)}%` }}
-                title="PMI/MIP"
-              />
-              <div 
-                className="bg-purple-500" 
-                style={{ width: `${getPercentage(results.hoaFee)}%` }}
-                title="HOA"
-              />
-            </div>
-
-            {/* Legend */}
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-blue-500"></div>
-                <span className="text-gray-400">P&I: {formatCurrency(results.monthlyPI)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-green-500"></div>
-                <span className="text-gray-400">Tax: {formatCurrency(results.monthlyTax)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-yellow-500"></div>
-                <span className="text-gray-400">Insurance: {formatCurrency(results.monthlyInsurance)}</span>
-              </div>
-              {(results.monthlyPMI > 0 || results.monthlyMIP > 0 || results.monthlyUSDA > 0) && (
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-red-500"></div>
-                  <span className="text-gray-400">
-                    {loanType === 'fha' ? 'MIP' : loanType === 'usda' ? 'Guarantee' : 'PMI'}: {formatCurrency(results.monthlyPMI + results.monthlyMIP + results.monthlyUSDA)}
-                  </span>
-                </div>
-              )}
-              {results.hoaFee > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-purple-500"></div>
-                  <span className="text-gray-400">HOA: {formatCurrency(results.hoaFee)}</span>
-                </div>
-              )}
+              <span className="pr-2 py-2 text-gray-500">%</span>
+              <button onClick={() => setInterestRate(0)} className={clearBtnStyle}>✕</button>
             </div>
           </div>
+          <input
+            type="range"
+            className="smooth-slider w-full mt-2"
+            min={1}
+            max={15}
+            step={0.125}
+            value={interestRate}
+            onChange={(e) => setInterestRate(parseFloat(e.target.value))}
+            style={{ background: getSliderBg(interestRate, 1, 15) }}
+          />
+        </div>
 
-          {/* Loan Summary */}
-          <div className="card">
-            <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-              <span>📊</span> Loan Summary
-            </h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-dark-border">
-                <span className="text-gray-400">Home Price</span>
-                <span className="text-white">{formatCurrency(results.homePrice)}</span>
+        {/* Property Taxes */}
+        <div className="mb-7">
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-[#E8E4DC] font-medium">Property Taxes</label>
+            <div className="flex gap-2">
+              <div className={inputBoxStyle}>
+                <input
+                  type="text"
+                  value={propertyTaxPercent}
+                  onChange={(e) => setPropertyTaxPercent(parseFloat(e.target.value) || 0)}
+                  className={`${textInputStyle} w-[50px]`}
+                />
+                <span className="pr-2 py-2 text-gray-500">%</span>
+                <button onClick={() => setPropertyTaxPercent(0)} className={clearBtnStyle}>✕</button>
               </div>
-              <div className="flex justify-between py-2 border-b border-dark-border">
-                <span className="text-gray-400">Down Payment</span>
-                <span className="text-white">{formatCurrency(results.downPayment)} ({results.downPaymentPercent.toFixed(1)}%)</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-dark-border">
-                <span className="text-gray-400">Loan Amount</span>
-                <span className="text-white font-semibold">{formatCurrency(results.loanAmount)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-dark-border">
-                <span className="text-gray-400">Total of {parseInt(loanTerm) * 12} Payments</span>
-                <span className="text-white">{formatCurrency(results.totalPayments)}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-400">Total Interest</span>
-                <span className="text-red-400">{formatCurrency(results.totalInterest)}</span>
+              <div className={inputBoxStyle}>
+                <span className="pl-2 pr-0 py-2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  value={tempPropertyTax}
+                  onChange={(e) => setTempPropertyTax(e.target.value)}
+                  onBlur={(e) => {
+                    const num = parseFloat(e.target.value.replace(/,/g, '')) || 0
+                    const percent = homePrice > 0 ? (num / homePrice) * 100 : 0
+                    setPropertyTaxPercent(Math.round(percent * 10) / 10)
+                    setTempPropertyTax(num.toLocaleString())
+                  }}
+                  className={`${textInputStyle} w-[80px]`}
+                />
+                <button onClick={() => { setPropertyTaxPercent(0); setTempPropertyTax('0') }} className={clearBtnStyle}>✕</button>
               </div>
             </div>
           </div>
+          <input
+            type="range"
+            className="smooth-slider w-full mt-2"
+            min={0}
+            max={5}
+            step={0.1}
+            value={propertyTaxPercent}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value)
+              setPropertyTaxPercent(val)
+              setTempPropertyTax(Math.round(homePrice * val / 100).toLocaleString())
+            }}
+            style={{ background: getSliderBg(propertyTaxPercent, 0, 5) }}
+          />
+        </div>
 
-          {/* First Year Amortization */}
-          <div className="card">
-            <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-              <span>📅</span> First Year Amortization
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-400 text-left">
-                    <th className="pb-2">Mo</th>
-                    <th className="pb-2">Principal</th>
-                    <th className="pb-2">Interest</th>
-                    <th className="pb-2">Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.amortization.map((row) => (
-                    <tr key={row.month} className="border-t border-dark-border">
-                      <td className="py-2 text-gray-400">{row.month}</td>
-                      <td className="py-2 text-green-400">{formatCurrencyDecimal(row.principal)}</td>
-                      <td className="py-2 text-red-400">{formatCurrencyDecimal(row.interest)}</td>
-                      <td className="py-2 text-white">{formatCurrency(row.balance)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Insurance */}
+        <div className="mb-7">
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-[#E8E4DC] font-medium">Homeowners Insurance</label>
+            <div className="flex gap-2">
+              <div className={inputBoxStyle}>
+                <input
+                  type="text"
+                  value={insurancePercent}
+                  onChange={(e) => setInsurancePercent(parseFloat(e.target.value) || 0)}
+                  className={`${textInputStyle} w-[50px]`}
+                />
+                <span className="pr-2 py-2 text-gray-500">%</span>
+                <button onClick={() => setInsurancePercent(0)} className={clearBtnStyle}>✕</button>
+              </div>
+              <div className={inputBoxStyle}>
+                <span className="pl-2 pr-0 py-2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  value={tempInsurance}
+                  onChange={(e) => setTempInsurance(e.target.value)}
+                  onBlur={(e) => {
+                    const num = parseFloat(e.target.value.replace(/,/g, '')) || 0
+                    const percent = homePrice > 0 ? (num / homePrice) * 100 : 0
+                    setInsurancePercent(Math.round(percent * 10) / 10)
+                    setTempInsurance(num.toLocaleString())
+                  }}
+                  className={`${textInputStyle} w-[80px]`}
+                />
+                <button onClick={() => { setInsurancePercent(0); setTempInsurance('0') }} className={clearBtnStyle}>✕</button>
+              </div>
             </div>
           </div>
+          <input
+            type="range"
+            className="smooth-slider w-full mt-2"
+            min={0}
+            max={3}
+            step={0.1}
+            value={insurancePercent}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value)
+              setInsurancePercent(val)
+              setTempInsurance(Math.round(homePrice * val / 100).toLocaleString())
+            }}
+            style={{ background: getSliderBg(insurancePercent, 0, 3) }}
+          />
+        </div>
 
-          {/* Affordability Check */}
-          <div className={`card border ${results.totalMonthly > 0 ? 'border-primary-500/50 bg-primary-500/10' : 'border-dark-border'}`}>
-            <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
-              <span>💡</span> Affordability Tip
-            </h3>
-            <p className="text-sm text-gray-400">
-              Financial experts recommend keeping your total housing costs below 28% of gross monthly income. 
-              For a {formatCurrency(results.totalMonthly)}/mo payment, you'd need approximately {formatCurrency(results.totalMonthly / 0.28 * 12)}/year gross income.
-            </p>
+        {/* HOA Fees */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-[#E8E4DC] font-medium">HOA Fees</label>
+            <div className={inputBoxStyle}>
+              <span className="pl-2 pr-0 py-2 text-gray-500">$</span>
+              <input
+                type="text"
+                value={tempHoa}
+                onChange={(e) => setTempHoa(e.target.value)}
+                onBlur={(e) => {
+                  const num = parseFloat(e.target.value.replace(/,/g, '')) || 0
+                  setHoaFees(num)
+                  setTempHoa(num.toLocaleString())
+                }}
+                className={`${textInputStyle} w-[70px]`}
+              />
+              <span className="pr-2 py-2 text-gray-500">/mo</span>
+              <button onClick={() => { setHoaFees(0); setTempHoa('0') }} className={clearBtnStyle}>✕</button>
+            </div>
+          </div>
+          <input
+            type="range"
+            className="smooth-slider w-full mt-2"
+            min={0}
+            max={1000}
+            step={25}
+            value={hoaFees}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value)
+              setHoaFees(val)
+              setTempHoa(val.toLocaleString())
+            }}
+            style={{ background: getSliderBg(hoaFees, 0, 1000) }}
+          />
+        </div>
+      </div>
+
+      {/* Loan Summary */}
+      <div className="bg-[#1A1A1A] rounded-2xl p-6 mt-6 border border-[#2A2A2A]">
+        <h3 className="text-primary-400 font-semibold mb-4">Loan Summary</h3>
+        <div className="space-y-3">
+          <div className="flex justify-between p-3 bg-[#0D0D0D] rounded-lg">
+            <span className="text-gray-400">Total Interest Paid</span>
+            <span className="text-[#E8E4DC] font-semibold">{formatCurrency(totalInterest)}</span>
+          </div>
+          <div className="flex justify-between p-3 bg-[#0D0D0D] rounded-lg">
+            <span className="text-gray-400">Total of All Payments</span>
+            <span className="text-[#E8E4DC] font-semibold">{formatCurrency(monthlyPI * numPayments)}</span>
           </div>
         </div>
       </div>
+
+      {/* PMI Warning */}
+      {downPaymentPercent < 20 && (
+        <div className="mt-6 p-4 bg-yellow-500/10 rounded-xl border border-yellow-500/30">
+          <div className="flex gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="text-yellow-400 font-semibold mb-1">PMI May Be Required</p>
+              <p className="text-gray-400 text-sm">With less than 20% down, private mortgage insurance (PMI) is typically required. Estimated PMI: ~{formatCurrency(loanAmount * 0.0075 / 12)}/mo (0.5-1% annually)</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

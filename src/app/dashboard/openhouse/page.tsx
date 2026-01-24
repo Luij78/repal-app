@@ -53,7 +53,7 @@ export default function OpenHousePage() {
 
   const getTypeInfo = (t: string) => buyerTypes.find(bt => bt.value === t) || buyerTypes[0]
 
-  const properties = [...new Set(visitors.map(v => v.property))].filter(Boolean)
+  const properties = Array.from(new Set(visitors.map(v => v.property))).filter(Boolean)
   const filteredVisitors = visitors.filter(v => filterProperty === 'all' || v.property === filterProperty).sort((a, b) => b.date.localeCompare(a.date))
 
   const potentialLeads = visitors.filter(v => ['buyer', 'buyer55', 'investor'].includes(v.buyerType) && v.agent === 'none').length

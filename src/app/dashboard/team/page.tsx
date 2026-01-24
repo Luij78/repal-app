@@ -36,7 +36,7 @@ export default function TeamManagerPage() {
     email: '',
     phone: '',
     commission_split: 70,
-    status: 'active' as const,
+    status: 'active' as 'active' | 'inactive',
     join_date: new Date().toISOString().split('T')[0],
     notes: '',
     specialties: ''

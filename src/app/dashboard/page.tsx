@@ -309,6 +309,19 @@ export default function DashboardPage() {
     )
   }
 
+  // Calculate urgent alerts count
+  const getUrgentAlertsCount = () => {
+    let count = 0
+    leads.forEach(lead => {
+      const days = daysSinceContact(lead.last_contact)
+      if (days >= 30 && lead.status !== 'closed' && lead.status !== 'lost') count++
+      if (lead.status === 'hot' && days >= 3) count++
+    })
+    return count
+  }
+
+  const urgentAlerts = getUrgentAlertsCount()
+
   return (
     <div className="animate-fade-in space-y-6">
       {/* AI Daily Digest */}
@@ -331,9 +344,19 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded-full">
-              AI Digest
-            </span>
+            <Link 
+              href="/dashboard/alerts"
+              onClick={(e) => e.stopPropagation()}
+              className="relative flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-2 py-1 rounded-full transition-all"
+            >
+              <span>🔔</span>
+              <span className="text-primary-400">AI Alerts</span>
+              {urgentAlerts > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {urgentAlerts}
+                </span>
+              )}
+            </Link>
             <span className="text-gray-400">{digestExpanded ? '▲' : '▼'}</span>
           </div>
         </div>

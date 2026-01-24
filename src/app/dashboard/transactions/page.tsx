@@ -119,8 +119,19 @@ export default function TransactionsPage() {
   const [aiAlerts, setAIAlerts] = useState<AIAlert[]>([])
   const [showAIPanel, setShowAIPanel] = useState(true)
   
-  const emptyForm = {
-    address: '', clientName: '', clientType: 'buyer' as const, status: 'pending', price: '', commission: '3', contractDate: '', closingDate: '', notes: '', leadId: null as string | null
+  const emptyForm: {
+    address: string
+    clientName: string
+    clientType: 'buyer' | 'seller'
+    status: string
+    price: string
+    commission: string
+    contractDate: string
+    closingDate: string
+    notes: string
+    leadId: string | null
+  } = {
+    address: '', clientName: '', clientType: 'buyer', status: 'pending', price: '', commission: '3', contractDate: '', closingDate: '', notes: '', leadId: null
   }
   const [formData, setFormData] = useState(emptyForm)
 

@@ -290,7 +290,7 @@ export default function LeadsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-400 mt-0.5">{lead.type.replace('_', ' ')} • {lead.source.replace('_', ' ')}</p>
+                  <p className="text-sm text-gray-400 mt-0.5">{(lead.type || "").replace('_', ' ')} • {(lead.source || "").replace('_', ' ')}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
                     {lead.email && <span>📧 {lead.email}</span>}
                     {lead.phone && <span>📱 {lead.phone}</span>}

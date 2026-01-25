@@ -6,12 +6,17 @@ export interface Lead {
   phone: string | null
   source: string
   status: 'new' | 'contacted' | 'qualified' | 'negotiating' | 'closed' | 'lost'
-  type: 'buyer' | 'seller' | 'both'
+  type: 'buyer' | 'seller' | 'both' | 'buyer55' | 'investor' | 'renter'
   notes: string | null
   property_interest: string | null
   budget_min: number | null
   budget_max: number | null
   timeline: string | null
+  priority: number | null
+  follow_up_date: string | null
+  preferred_area: string | null
+  birthday: string | null
+  home_anniversary: string | null
   created_at: string
   updated_at: string
 }

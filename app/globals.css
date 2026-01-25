@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #D4AF37;
+  --dark-bg: #0D0D0D;
+  --dark-card: #1A1A1A;
+  --dark-border: #2A2A2A;
+}
+
+body {
+  background: linear-gradient(180deg, #0D0D0D 0%, #1A1A1A 100%);
+  min-height: 100vh;
+}
+
+.card {
+  background: linear-gradient(135deg, #1A1A1A 0%, #1F1F1F 100%);
+  border: 1px solid #2A2A2A;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', serif;
+}

@@ -1,10 +1,13 @@
 -- REPal Database Schema for Supabase
--- Run this in your Supabase SQL Editor
+-- Version: 2.0 (Updated 2026-01-25)
+-- Run this in your Supabase SQL Editor for fresh installs
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Leads Table
+-- ============================================
+-- LEADS TABLE
+-- ============================================
 CREATE TABLE leads (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -13,17 +16,28 @@ CREATE TABLE leads (
   phone TEXT,
   source TEXT DEFAULT 'manual',
   status TEXT DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'qualified', 'negotiating', 'closed', 'lost')),
-  type TEXT DEFAULT 'buyer' CHECK (type IN ('buyer', 'seller', 'both')),
+  type TEXT DEFAULT 'buyer' CHECK (type IN ('buyer', 'seller', 'both', 'buyer55', 'investor', 'renter')),
   notes TEXT,
   property_interest TEXT,
   budget_min NUMERIC,
   budget_max NUMERIC,
   timeline TEXT,
+  priority INTEGER DEFAULT 5,              -- 1-10 scale (1=hottest)
+  follow_up_date DATE,                     -- Next scheduled follow-up
+  preferred_area TEXT,                     -- Geographic preference
+  birthday DATE,                           -- For relationship building
+  home_anniversary DATE,                   -- Date they bought their home
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Appointments Table
+COMMENT ON TABLE leads IS 'CRM leads and prospects';
+COMMENT ON COLUMN leads.priority IS 'Lead priority 1-10 (1=hottest, 10=coldest)';
+COMMENT ON COLUMN leads.type IS 'buyer, seller, both, buyer55, investor, renter';
+
+-- ============================================
+-- APPOINTMENTS TABLE
+-- ============================================
 CREATE TABLE appointments (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -38,7 +52,11 @@ CREATE TABLE appointments (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Transactions Table
+COMMENT ON TABLE appointments IS 'Scheduled meetings and showings';
+
+-- ============================================
+-- TRANSACTIONS TABLE
+-- ============================================
 CREATE TABLE transactions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -54,7 +72,11 @@ CREATE TABLE transactions (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tasks Table
+COMMENT ON TABLE transactions IS 'Real estate deals from contract to close';
+
+-- ============================================
+-- TASKS TABLE
+-- ============================================
 CREATE TABLE tasks (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -69,7 +91,11 @@ CREATE TABLE tasks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Expenses Table
+COMMENT ON TABLE tasks IS 'To-do items and reminders';
+
+-- ============================================
+-- EXPENSES TABLE
+-- ============================================
 CREATE TABLE expenses (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -81,7 +107,11 @@ CREATE TABLE expenses (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Mileage Trips Table
+COMMENT ON TABLE expenses IS 'Tax-deductible business expenses';
+
+-- ============================================
+-- MILEAGE TRIPS TABLE
+-- ============================================
 CREATE TABLE mileage_trips (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -94,7 +124,11 @@ CREATE TABLE mileage_trips (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Coach Progress Table
+COMMENT ON TABLE mileage_trips IS 'Business mileage log for tax deductions';
+
+-- ============================================
+-- COACH PROGRESS TABLE
+-- ============================================
 CREATE TABLE coach_progress (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -105,7 +139,11 @@ CREATE TABLE coach_progress (
   UNIQUE(user_id, category, item_id, completed_date)
 );
 
--- User Profiles Table
+COMMENT ON TABLE coach_progress IS 'Daily success checklist progress';
+
+-- ============================================
+-- USER PROFILES TABLE
+-- ============================================
 CREATE TABLE user_profiles (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT UNIQUE NOT NULL,
@@ -120,7 +158,11 @@ CREATE TABLE user_profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Drip Campaigns Table
+COMMENT ON TABLE user_profiles IS 'Agent profile and signature info';
+
+-- ============================================
+-- DRIP CAMPAIGNS TABLE
+-- ============================================
 CREATE TABLE drip_campaigns (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -131,7 +173,11 @@ CREATE TABLE drip_campaigns (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Quick Reply Templates Table
+COMMENT ON TABLE drip_campaigns IS 'Automated email/SMS sequences';
+
+-- ============================================
+-- QUICK REPLY TEMPLATES TABLE
+-- ============================================
 CREATE TABLE quick_reply_templates (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -141,7 +187,11 @@ CREATE TABLE quick_reply_templates (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Open House Sign-Ins Table
+COMMENT ON TABLE quick_reply_templates IS 'Pre-built message templates';
+
+-- ============================================
+-- OPEN HOUSE SIGN-INS TABLE
+-- ============================================
 CREATE TABLE open_house_signins (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -156,7 +206,11 @@ CREATE TABLE open_house_signins (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Row Level Security (RLS) Policies
+COMMENT ON TABLE open_house_signins IS 'Open house visitor capture';
+
+-- ============================================
+-- ROW LEVEL SECURITY
+-- ============================================
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
@@ -169,7 +223,7 @@ ALTER TABLE drip_campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quick_reply_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE open_house_signins ENABLE ROW LEVEL SECURITY;
 
--- Create policies for each table (users can only access their own data)
+-- Create policies (users can only access their own data)
 CREATE POLICY "Users can manage their own leads" ON leads
   FOR ALL USING (user_id = current_setting('request.jwt.claims')::json->>'sub');
 
@@ -203,9 +257,13 @@ CREATE POLICY "Users can manage their own templates" ON quick_reply_templates
 CREATE POLICY "Users can manage their own open house signins" ON open_house_signins
   FOR ALL USING (user_id = current_setting('request.jwt.claims')::json->>'sub');
 
--- Create indexes for better performance
+-- ============================================
+-- INDEXES
+-- ============================================
 CREATE INDEX idx_leads_user_id ON leads(user_id);
 CREATE INDEX idx_leads_status ON leads(status);
+CREATE INDEX idx_leads_priority ON leads(priority);
+CREATE INDEX idx_leads_follow_up_date ON leads(follow_up_date);
 CREATE INDEX idx_appointments_user_id ON appointments(user_id);
 CREATE INDEX idx_appointments_date ON appointments(date);
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
@@ -214,7 +272,9 @@ CREATE INDEX idx_tasks_status ON tasks(status);
 CREATE INDEX idx_expenses_user_id ON expenses(user_id);
 CREATE INDEX idx_mileage_user_id ON mileage_trips(user_id);
 
--- Function to update updated_at timestamp
+-- ============================================
+-- TRIGGERS
+-- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -223,7 +283,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Triggers for updated_at
 CREATE TRIGGER update_leads_updated_at
   BEFORE UPDATE ON leads
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

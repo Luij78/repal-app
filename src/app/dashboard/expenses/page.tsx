@@ -1,214 +1,422 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
+import { createClient } from '@/lib/supabase/client'
 
-const sampleExpenses = [
-  { id: 1, date: '2026-01-20', category: 'marketing', description: 'Facebook Ads - January Campaign', vendor: 'Meta', amount: 350, paymentMethod: 'credit', isDeductible: true, notes: 'Lead generation campaign for Winter Park area' },
-  { id: 2, date: '2026-01-18', category: 'marketing', description: 'Just Listed Postcards - Sarah Chen', vendor: 'VistaPrint', amount: 185, paymentMethod: 'credit', isDeductible: true, notes: '500 postcards for Dr Phillips neighborhood' },
-  { id: 3, date: '2026-01-15', category: 'education', description: 'NAR Annual Conference Registration', vendor: 'National Association of Realtors', amount: 495, paymentMethod: 'credit', isDeductible: true, notes: 'March 2026 conference in San Diego' },
-  { id: 4, date: '2026-01-12', category: 'office', description: 'Printer Ink & Paper', vendor: 'Staples', amount: 89.99, paymentMethod: 'debit', isDeductible: true },
-  { id: 5, date: '2026-01-10', category: 'software', description: 'MLS Subscription - Monthly', vendor: 'Stellar MLS', amount: 45, paymentMethod: 'credit', isDeductible: true },
-  { id: 6, date: '2026-01-08', category: 'marketing', description: 'Zillow Premier Agent - January', vendor: 'Zillow', amount: 500, paymentMethod: 'credit', isDeductible: true, notes: 'Lead package for Orlando area' },
-  { id: 7, date: '2026-01-05', category: 'client', description: 'Closing Gift - Williams Family', vendor: 'Amazon', amount: 150, paymentMethod: 'credit', isDeductible: true, notes: 'Wine basket and cutting board set' },
-  { id: 8, date: '2026-01-03', category: 'photography', description: 'Professional Photos - 456 Dr Phillips', vendor: 'Orlando Real Estate Photography', amount: 275, paymentMethod: 'credit', isDeductible: true, notes: 'Sarah Chen listing' },
-  { id: 9, date: '2025-12-28', category: 'software', description: 'CRM Software - Annual', vendor: 'Follow Up Boss', amount: 499, paymentMethod: 'credit', isDeductible: true },
-  { id: 10, date: '2025-12-20', category: 'marketing', description: 'Holiday Client Gifts', vendor: 'Various', amount: 850, paymentMethod: 'credit', isDeductible: true, notes: 'Gift cards and cookies for top 25 clients' },
-  { id: 11, date: '2025-12-15', category: 'education', description: 'Real Estate Masterclass', vendor: 'Tom Ferry', amount: 997, paymentMethod: 'credit', isDeductible: true },
-  { id: 12, date: '2025-12-10', category: 'office', description: 'Business Cards - 1000 qty', vendor: 'Moo', amount: 125, paymentMethod: 'credit', isDeductible: true },
-  { id: 13, date: '2025-12-05', category: 'insurance', description: 'E&O Insurance - Quarterly', vendor: 'CRES Insurance', amount: 375, paymentMethod: 'credit', isDeductible: true },
-  { id: 14, date: '2025-12-01', category: 'dues', description: 'Orlando Regional Realtor Assoc - Annual', vendor: 'ORRA', amount: 650, paymentMethod: 'credit', isDeductible: true },
-  { id: 15, date: '2025-11-25', category: 'signage', description: 'For Sale Signs (10)', vendor: 'Oakley Signs', amount: 320, paymentMethod: 'credit', isDeductible: true }
-]
+interface Expense {
+  id: string
+  user_id: string
+  amount: number
+  category: string
+  description: string | null
+  date: string
+  receipt_url: string | null
+  tax_deductible: boolean
+  created_at: string
+}
 
 const categories = [
-  { value: 'marketing', label: '📢 Marketing', color: '#4A9B7F' },
-  { value: 'office', label: '🏢 Office Supplies', color: '#6B8DD6' },
-  { value: 'software', label: '💻 Software/Tech', color: '#9B59B6' },
-  { value: 'education', label: '📚 Education', color: '#E67E22' },
-  { value: 'client', label: '🎁 Client Gifts', color: '#D4AF37' },
-  { value: 'photography', label: '📸 Photography', color: '#E74C3C' },
-  { value: 'signage', label: '🪧 Signage', color: '#1ABC9C' },
-  { value: 'dues', label: '🏛️ Dues & Fees', color: '#34495E' },
-  { value: 'insurance', label: '🛡️ Insurance', color: '#7F8C8D' },
-  { value: 'other', label: '📦 Other', color: '#666' }
+  { value: 'marketing', label: '📢 Marketing', color: '#E67E22' },
+  { value: 'transportation', label: '🚗 Transportation', color: '#3498DB' },
+  { value: 'office', label: '🏢 Office', color: '#9B59B6' },
+  { value: 'technology', label: '💻 Technology', color: '#1ABC9C' },
+  { value: 'education', label: '📚 Education', color: '#E74C3C' },
+  { value: 'client', label: '🎁 Client Gifts', color: '#F39C12' },
+  { value: 'dues', label: '🏷️ Dues & Subscriptions', color: '#2ECC71' },
+  { value: 'meals', label: '🍽️ Meals & Entertainment', color: '#E91E63' },
+  { value: 'supplies', label: '📦 Supplies', color: '#00BCD4' },
+  { value: 'other', label: '📋 Other', color: '#666' }
 ]
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<any[]>([])
+  const { user } = useUser()
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [editingExpense, setEditingExpense] = useState<any>(null)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [filterCategory, setFilterCategory] = useState('all')
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString())
+  const [filterMonth, setFilterMonth] = useState('all')
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0], category: 'marketing', description: '', vendor: '', amount: '', paymentMethod: 'credit', isDeductible: true, notes: ''
+    amount: '',
+    category: 'marketing',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+    tax_deductible: true
   })
 
-  useEffect(() => {
-    const saved = localStorage.getItem('repal_expenses')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      setExpenses(parsed.length > 0 ? parsed : sampleExpenses)
-    } else {
-      setExpenses(sampleExpenses)
-    }
-  }, [])
+  const supabase = createClient()
 
   useEffect(() => {
-    if (expenses.length > 0) {
-      localStorage.setItem('repal_expenses', JSON.stringify(expenses))
+    if (user) fetchExpenses()
+  }, [user])
+
+  const fetchExpenses = async () => {
+    if (!user) return
+
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching expenses:', error)
+    } else {
+      setExpenses(data || [])
     }
-  }, [expenses])
+    setLoading(false)
+  }
 
   const getCategoryInfo = (cat: string) => categories.find(c => c.value === cat) || categories[categories.length - 1]
 
-  const filteredExpenses = expenses.filter(exp => {
-    const matchesCategory = filterCategory === 'all' || exp.category === filterCategory
-    const matchesYear = exp.date.startsWith(filterYear)
-    return matchesCategory && matchesYear
-  }).sort((a, b) => b.date.localeCompare(a.date))
-
-  const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0)
-  const deductibleTotal = filteredExpenses.filter(e => e.isDeductible).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0)
-
   const resetForm = () => {
-    setFormData({ date: new Date().toISOString().split('T')[0], category: 'marketing', description: '', vendor: '', amount: '', paymentMethod: 'credit', isDeductible: true, notes: '' })
-    setShowForm(false)
+    setFormData({
+      amount: '',
+      category: 'marketing',
+      description: '',
+      date: new Date().toISOString().split('T')[0],
+      tax_deductible: true
+    })
     setEditingExpense(null)
+    setShowForm(false)
   }
 
-  const openEditForm = (expense: any) => {
+  const openEditForm = (expense: Expense) => {
     setEditingExpense(expense)
     setFormData({
-      date: expense.date || new Date().toISOString().split('T')[0],
-      category: expense.category || 'marketing',
+      amount: expense.amount.toString(),
+      category: expense.category,
       description: expense.description || '',
-      vendor: expense.vendor || '',
-      amount: expense.amount?.toString() || '',
-      paymentMethod: expense.paymentMethod || 'credit',
-      isDeductible: expense.isDeductible !== false,
-      notes: expense.notes || ''
+      date: expense.date,
+      tax_deductible: expense.tax_deductible
     })
     setShowForm(true)
   }
 
-  const saveExpense = () => {
-    const expenseData = { ...formData, amount: parseFloat(formData.amount) || 0 }
-    if (editingExpense) {
-      setExpenses(expenses.map(e => e.id === editingExpense.id ? { ...expenseData, id: editingExpense.id } : e))
-    } else {
-      setExpenses([...expenses, { ...expenseData, id: Date.now() }])
+  const saveExpense = async () => {
+    if (!user || !formData.amount || !formData.date) return
+
+    const expenseData = {
+      user_id: user.id,
+      amount: parseFloat(formData.amount),
+      category: formData.category,
+      description: formData.description || null,
+      date: formData.date,
+      tax_deductible: formData.tax_deductible
     }
-    resetForm()
+
+    if (editingExpense) {
+      const { error } = await supabase
+        .from('expenses')
+        .update(expenseData)
+        .eq('id', editingExpense.id)
+
+      if (error) {
+        console.error('Error updating expense:', error)
+      } else {
+        setExpenses(expenses.map(e => e.id === editingExpense.id ? { ...e, ...expenseData } : e))
+        resetForm()
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expenseData)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding expense:', error)
+      } else if (data) {
+        setExpenses([data, ...expenses])
+        resetForm()
+      }
+    }
   }
 
-  const deleteExpense = (id: number) => {
-    if (confirm('Delete this expense?')) setExpenses(expenses.filter(e => e.id !== id))
+  const deleteExpense = async (expenseId: string) => {
+    if (!confirm('Delete this expense?')) return
+
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', expenseId)
+
+    if (error) {
+      console.error('Error deleting expense:', error)
+    } else {
+      setExpenses(expenses.filter(e => e.id !== expenseId))
+    }
+  }
+
+  // Get unique months from expenses
+  const months = Array.from(new Set(expenses.map(e => e.date.substring(0, 7)))).sort().reverse()
+
+  const filteredExpenses = expenses.filter(expense => {
+    const matchesCategory = filterCategory === 'all' || expense.category === filterCategory
+    const matchesMonth = filterMonth === 'all' || expense.date.startsWith(filterMonth)
+    return matchesCategory && matchesMonth
+  })
+
+  // Stats
+  const currentYear = new Date().getFullYear().toString()
+  const currentMonth = new Date().toISOString().substring(0, 7)
+  const ytdTotal = expenses.filter(e => e.date.startsWith(currentYear)).reduce((sum, e) => sum + e.amount, 0)
+  const mtdTotal = expenses.filter(e => e.date.startsWith(currentMonth)).reduce((sum, e) => sum + e.amount, 0)
+  const deductibleTotal = expenses.filter(e => e.tax_deductible && e.date.startsWith(currentYear)).reduce((sum, e) => sum + e.amount, 0)
+  const filteredTotal = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
+
+  // Category breakdown
+  const categoryTotals = categories.map(cat => ({
+    ...cat,
+    total: expenses.filter(e => e.category === cat.value && e.date.startsWith(currentYear)).reduce((sum, e) => sum + e.amount, 0)
+  })).filter(c => c.total > 0).sort((a, b) => b.total - a.total)
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
+  }
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const formatMonth = (monthStr: string) => {
+    const [year, month] = monthStr.split('-')
+    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', color: '#fff', padding: '1rem' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link href="/dashboard" style={{ color: '#D4AF37', fontSize: '1.5rem' }}>←</Link>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>💰 Expense Tracker</h1>
-          </div>
-          <button onClick={() => setShowForm(true)} style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Add Expense</button>
+    <div className="animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">🧾 Expense Tracker</h1>
+          <p className="text-gray-400">Track tax-deductible business expenses</p>
         </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <span>+</span> Add Expense
+        </button>
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
-            <div style={{ fontSize: '0.875rem', color: '#999' }}>Total Expenses ({filterYear})</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#C97B63' }}>${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-          </div>
-          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
-            <div style={{ fontSize: '0.875rem', color: '#999' }}>Tax Deductible</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4A9B7F' }}>${deductibleTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-          </div>
-          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
-            <div style={{ fontSize: '0.875rem', color: '#999' }}>Entries</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{filteredExpenses.length}</div>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-white">{formatCurrency(mtdTotal)}</p>
+          <p className="text-gray-400 text-sm">This Month</p>
         </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-          </select>
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
-            <option value="all">All Categories</option>
-            {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-          </select>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-primary-500">{formatCurrency(ytdTotal)}</p>
+          <p className="text-gray-400 text-sm">Year to Date</p>
         </div>
+        <div className="card text-center border-green-500/30">
+          <p className="text-2xl font-bold text-green-400">{formatCurrency(deductibleTotal)}</p>
+          <p className="text-gray-400 text-sm">Tax Deductible (YTD)</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-gray-400">{expenses.length}</p>
+          <p className="text-gray-400 text-sm">Total Entries</p>
+        </div>
+      </div>
 
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {filteredExpenses.map(expense => {
-            const catInfo = getCategoryInfo(expense.category)
-            return (
-              <div key={expense.id} onClick={() => openEditForm(expense)} className="group" style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                  <div style={{ width: '3rem', height: '3rem', borderRadius: '50%', backgroundColor: catInfo.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>{catInfo.label.split(' ')[0]}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: '600' }}>{expense.description}</span>
-                      {expense.isDeductible && <span style={{ backgroundColor: '#4A9B7F', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem' }}>TAX DEDUCTIBLE</span>}
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#999', marginTop: '0.25rem' }}>
-                      <span style={{ marginRight: '1rem' }}>📅 {new Date(expense.date).toLocaleDateString()}</span>
-                      {expense.vendor && <span>🏪 {expense.vendor}</span>}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#C97B63' }}>-${parseFloat(expense.amount).toFixed(2)}</div>
+      {/* Category Breakdown */}
+      {categoryTotals.length > 0 && (
+        <div className="card mb-6">
+          <h3 className="text-white font-semibold mb-4">📊 {currentYear} Breakdown</h3>
+          <div className="space-y-3">
+            {categoryTotals.slice(0, 5).map(cat => (
+              <div key={cat.value} className="flex items-center gap-3">
+                <div className="w-24 text-sm" style={{ color: cat.color }}>{cat.label}</div>
+                <div className="flex-1 bg-dark-border rounded-full h-3">
+                  <div 
+                    className="h-full rounded-full transition-all"
+                    style={{ 
+                      width: `${Math.min((cat.total / ytdTotal) * 100, 100)}%`,
+                      backgroundColor: cat.color 
+                    }}
+                  />
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); deleteExpense(expense.id) }} className="delete-btn" style={{ backgroundColor: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.25rem', padding: '0.5rem', marginLeft: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}>🗑️</button>
+                <div className="w-24 text-right text-white font-semibold">{formatCurrency(cat.total)}</div>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
+      )}
 
-        {showForm && (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-            <div style={{ backgroundColor: '#2a2a2a', borderRadius: '1rem', padding: '1.5rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflow: 'auto' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{editingExpense ? '✏️ Edit Expense' : '➕ Add Expense'}</h2>
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <input type="text" placeholder="Description *" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input type="number" step="0.01" placeholder="Amount *" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                  <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
-                    {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-                  </select>
-                  <select value={formData.paymentMethod} onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
-                    <option value="credit">💳 Credit Card</option>
-                    <option value="debit">🏦 Debit Card</option>
-                    <option value="cash">💵 Cash</option>
-                    <option value="check">📝 Check</option>
-                  </select>
-                </div>
-                <input type="text" placeholder="Vendor" value={formData.vendor} onChange={(e) => setFormData({ ...formData, vendor: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                <textarea placeholder="Notes..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', resize: 'vertical' }} />
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={formData.isDeductible} onChange={(e) => setFormData({ ...formData, isDeductible: e.target.checked })} style={{ width: '1.25rem', height: '1.25rem', accentColor: '#D4AF37' }} />
-                  <span>Tax Deductible</span>
-                </label>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button onClick={resetForm} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
-                <button onClick={saveExpense} disabled={!formData.description || !formData.amount} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: '#D4AF37', color: '#000', cursor: 'pointer', fontWeight: '600', opacity: formData.description && formData.amount ? 1 : 0.5 }}>{editingExpense ? 'Save Changes' : 'Add Expense'}</button>
-              </div>
-            </div>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="input-field"
+        >
+          <option value="all">All Categories</option>
+          {categories.map(cat => (
+            <option key={cat.value} value={cat.value}>{cat.label}</option>
+          ))}
+        </select>
+        <select
+          value={filterMonth}
+          onChange={(e) => setFilterMonth(e.target.value)}
+          className="input-field"
+        >
+          <option value="all">All Time</option>
+          {months.map(month => (
+            <option key={month} value={month}>{formatMonth(month)}</option>
+          ))}
+        </select>
+        {(filterCategory !== 'all' || filterMonth !== 'all') && (
+          <div className="flex items-center text-primary-500">
+            Filtered Total: <span className="font-bold ml-2">{formatCurrency(filteredTotal)}</span>
           </div>
         )}
       </div>
 
-      <style jsx>{`
-        .group:hover .delete-btn { opacity: 1 !important; }
-      `}</style>
+      {/* Expenses List */}
+      {loading ? (
+        <div className="card text-center py-12">
+          <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-400">Loading expenses...</p>
+        </div>
+      ) : filteredExpenses.length === 0 ? (
+        <div className="card text-center py-12">
+          <span className="text-4xl mb-4 block">🧾</span>
+          <p className="text-gray-400 mb-4">
+            {filterCategory !== 'all' || filterMonth !== 'all' ? 'No expenses match your filters' : 'No expenses yet'}
+          </p>
+          {filterCategory === 'all' && filterMonth === 'all' && (
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              Track Your First Expense
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredExpenses.map(expense => {
+            const catInfo = getCategoryInfo(expense.category)
+            
+            return (
+              <div key={expense.id} className="card flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: `${catInfo.color}20` }}
+                  >
+                    <span>{catInfo.label.split(' ')[0]}</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-white">{formatCurrency(expense.amount)}</p>
+                      {expense.tax_deductible && (
+                        <span className="text-green-400 text-xs">✓ Deductible</span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      {expense.description || catInfo.label} • {formatDate(expense.date)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditForm(expense)}
+                    className="p-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => deleteExpense(expense.id)}
+                    className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">{editingExpense ? 'Edit Expense' : 'Add Expense'}</h2>
+              <button onClick={resetForm} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Amount *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Date *</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="input-field w-full"
+                >
+                  {categories.map(cat => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Description</label>
+                <input
+                  type="text"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="What was this expense for?"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="tax_deductible"
+                  checked={formData.tax_deductible}
+                  onChange={(e) => setFormData({ ...formData, tax_deductible: e.target.checked })}
+                  className="w-5 h-5 rounded border-gray-600 bg-dark-bg text-primary-500 focus:ring-primary-500"
+                />
+                <label htmlFor="tax_deductible" className="text-gray-300">
+                  ✓ Tax Deductible
+                </label>
+              </div>
+            </div>
+            <div className="p-6 border-t border-dark-border flex gap-3">
+              <button onClick={resetForm} className="btn-secondary flex-1">Cancel</button>
+              <button 
+                onClick={saveExpense} 
+                className="btn-primary flex-1"
+                disabled={!formData.amount || !formData.date}
+              >
+                {editingExpense ? 'Save Changes' : 'Add Expense'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,269 +1,602 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
+import { createClient } from '@/lib/supabase/client'
 
-const sampleTransactions = [
-  { id: 1, address: '789 Lake View Dr, Winter Park, FL', clientName: 'Robert & Linda Williams', clientType: 'buyer', clientEmail: 'rwilliams55@aol.com', clientPhone: '407-555-0103', price: 575000, contractDate: '2025-12-15', closingDate: '2026-01-30', commission: 3, status: 'closing', leadId: 3, milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: false, closing: false }, createdAt: '2025-12-15' },
-  { id: 2, address: '456 Dr Phillips Blvd, Orlando, FL', clientName: 'Sarah Chen', clientType: 'seller', clientEmail: 'sarah.chen@gmail.com', clientPhone: '407-555-0102', price: 485000, contractDate: '2026-01-10', closingDate: '2026-02-28', commission: 2.5, status: 'active', leadId: 2, milestones: { offer: true, contract: true, inspection: true, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }, createdAt: '2026-01-10' },
-  { id: 3, address: '123 Maitland Ave, Maitland, FL', clientName: 'Jennifer Thompson', clientType: 'buyer', clientEmail: 'jthompson@outlook.com', clientPhone: '407-555-0105', price: 315000, contractDate: '2026-01-18', closingDate: '2026-03-15', commission: 3, status: 'active', leadId: 5, milestones: { offer: true, contract: true, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }, createdAt: '2026-01-18' },
-  { id: 4, address: '567 Waterford Lakes Pkwy, Orlando, FL', clientName: 'Marcus Johnson', clientType: 'buyer', clientEmail: 'marcus.j@email.com', clientPhone: '407-555-0101', price: 425000, contractDate: '2025-10-01', closingDate: '2025-11-30', commission: 3, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-10-01' },
-  { id: 5, address: '234 Baldwin Park Blvd, Orlando, FL', clientName: 'Christopher Lee', clientType: 'buyer', clientEmail: 'chris.lee@techcorp.com', clientPhone: '407-555-0107', price: 550000, contractDate: '2025-08-15', closingDate: '2025-10-01', commission: 2.5, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-08-15' },
-  { id: 6, address: '890 Celebration Ave, Kissimmee, FL', clientName: 'Paul Nelson', clientType: 'buyer', clientEmail: 'pnelson@techstartup.com', clientPhone: '407-555-0130', price: 285000, contractDate: '2025-06-01', closingDate: '2025-07-15', commission: 3, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-06-01' },
-  { id: 7, address: '456 Lake Nona Blvd, Orlando, FL', clientName: 'Jessica Campbell', clientType: 'buyer', clientEmail: 'jcampbell@lawfirm.com', clientPhone: '407-555-0137', price: 625000, contractDate: '2025-09-01', closingDate: '2025-10-30', commission: 3, status: 'closed', milestones: { offer: true, contract: true, inspection: true, appraisal: true, financing: true, title: true, walkthrough: true, closing: true }, createdAt: '2025-09-01' }
-]
+interface Transaction {
+  id: string
+  user_id: string
+  lead_id: string | null
+  property_address: string
+  sale_price: number
+  commission_rate: number
+  status: 'pending' | 'under-contract' | 'closed' | 'cancelled'
+  closing_date: string | null
+  contract_date: string | null
+  inspection_date: string | null
+  appraisal_date: string | null
+  milestone: number
+  notes: string | null
+  client_name: string | null
+  client_type: 'buyer' | 'seller'
+  created_at: string
+  updated_at: string
+}
 
-const milestoneSteps = [
-  { key: 'offer', label: 'Offer', icon: '📝' },
-  { key: 'contract', label: 'Contract', icon: '📋' },
-  { key: 'inspection', label: 'Inspection', icon: '🔍' },
-  { key: 'appraisal', label: 'Appraisal', icon: '💰' },
-  { key: 'financing', label: 'Financing', icon: '🏦' },
-  { key: 'title', label: 'Title', icon: '📄' },
-  { key: 'walkthrough', label: 'Walk-through', icon: '🚶' },
-  { key: 'closing', label: 'Closing', icon: '🔑' }
+const statusConfig = {
+  pending: { label: 'Pending', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', icon: '⏳' },
+  'under-contract': { label: 'Under Contract', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: '📝' },
+  closed: { label: 'Closed', color: 'bg-green-500/20 text-green-400 border-green-500/30', icon: '✅' },
+  cancelled: { label: 'Cancelled', color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: '❌' }
+}
+
+const milestones = [
+  { id: 0, label: 'New Lead', icon: '👤' },
+  { id: 1, label: 'Contract Signed', icon: '📝' },
+  { id: 2, label: 'Inspection', icon: '🔍' },
+  { id: 3, label: 'Appraisal', icon: '📊' },
+  { id: 4, label: 'Clear to Close', icon: '✨' },
+  { id: 5, label: 'Closed!', icon: '🎉' }
 ]
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<any[]>([])
+  const { user } = useUser()
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [editingTx, setEditingTx] = useState<any>(null)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [filterStatus, setFilterStatus] = useState('all')
   const [formData, setFormData] = useState({
-    address: '', clientName: '', clientType: 'buyer', clientEmail: '', clientPhone: '',
-    price: '', contractDate: '', closingDate: '', commission: 3, status: 'pending',
-    milestones: { offer: false, contract: false, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }
+    property_address: '',
+    sale_price: '',
+    commission_rate: '3',
+    status: 'pending' as Transaction['status'],
+    closing_date: '',
+    contract_date: '',
+    inspection_date: '',
+    appraisal_date: '',
+    milestone: 0,
+    notes: '',
+    client_name: '',
+    client_type: 'buyer' as Transaction['client_type']
   })
 
+  const supabase = createClient()
+
   useEffect(() => {
-    const saved = localStorage.getItem('repal_transactions')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      setTransactions(parsed.length > 0 ? parsed : sampleTransactions)
+    if (user) fetchTransactions()
+  }, [user])
+
+  const fetchTransactions = async () => {
+    if (!user) return
+
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching transactions:', error)
     } else {
-      setTransactions(sampleTransactions)
+      setTransactions(data || [])
     }
-  }, [])
-
-  useEffect(() => {
-    if (transactions.length > 0) {
-      localStorage.setItem('repal_transactions', JSON.stringify(transactions))
-    }
-  }, [transactions])
-
-  const getStatusColor = (s: string) => {
-    const colors: Record<string, string> = { pending: '#666', active: '#D4AF37', closing: '#6B8DD6', closed: '#4A9B7F', cancelled: '#C97B63' }
-    return colors[s] || '#666'
+    setLoading(false)
   }
-
-  const filteredTransactions = transactions.filter(tx => {
-    return filterStatus === 'all' || tx.status === filterStatus
-  }).sort((a, b) => b.contractDate.localeCompare(a.contractDate))
-
-  const activeTransactions = transactions.filter(tx => ['active', 'closing', 'pending'].includes(tx.status))
-  const closedTransactions = transactions.filter(tx => tx.status === 'closed')
-  const ytdCommission = closedTransactions.filter(tx => tx.closingDate?.startsWith('2026')).reduce((sum, tx) => sum + (parseFloat(tx.price) * (tx.commission / 100)), 0)
-  const pendingCommission = activeTransactions.reduce((sum, tx) => sum + (parseFloat(tx.price) * (tx.commission / 100)), 0)
 
   const resetForm = () => {
     setFormData({
-      address: '', clientName: '', clientType: 'buyer', clientEmail: '', clientPhone: '',
-      price: '', contractDate: '', closingDate: '', commission: 3, status: 'pending',
-      milestones: { offer: false, contract: false, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }
+      property_address: '',
+      sale_price: '',
+      commission_rate: '3',
+      status: 'pending',
+      closing_date: '',
+      contract_date: '',
+      inspection_date: '',
+      appraisal_date: '',
+      milestone: 0,
+      notes: '',
+      client_name: '',
+      client_type: 'buyer'
     })
+    setEditingTransaction(null)
     setShowForm(false)
-    setEditingTx(null)
   }
 
-  const openEditForm = (tx: any) => {
-    setEditingTx(tx)
+  const openEditForm = (txn: Transaction) => {
+    setEditingTransaction(txn)
     setFormData({
-      address: tx.address || '',
-      clientName: tx.clientName || '',
-      clientType: tx.clientType || 'buyer',
-      clientEmail: tx.clientEmail || '',
-      clientPhone: tx.clientPhone || '',
-      price: tx.price?.toString() || '',
-      contractDate: tx.contractDate || '',
-      closingDate: tx.closingDate || '',
-      commission: tx.commission || 3,
-      status: tx.status || 'pending',
-      milestones: tx.milestones || { offer: false, contract: false, inspection: false, appraisal: false, financing: false, title: false, walkthrough: false, closing: false }
+      property_address: txn.property_address,
+      sale_price: txn.sale_price.toString(),
+      commission_rate: txn.commission_rate.toString(),
+      status: txn.status,
+      closing_date: txn.closing_date || '',
+      contract_date: txn.contract_date || '',
+      inspection_date: txn.inspection_date || '',
+      appraisal_date: txn.appraisal_date || '',
+      milestone: txn.milestone,
+      notes: txn.notes || '',
+      client_name: txn.client_name || '',
+      client_type: txn.client_type
     })
+    setSelectedTransaction(null)
     setShowForm(true)
   }
 
-  const saveTransaction = () => {
-    const txData = { ...formData, price: parseFloat(formData.price) || 0 }
-    if (editingTx) {
-      setTransactions(transactions.map(t => t.id === editingTx.id ? { ...txData, id: editingTx.id, createdAt: editingTx.createdAt } : t))
-    } else {
-      setTransactions([...transactions, { ...txData, id: Date.now(), createdAt: new Date().toISOString().split('T')[0] }])
+  const saveTransaction = async () => {
+    if (!user || !formData.property_address.trim() || !formData.sale_price) return
+
+    const txnData = {
+      user_id: user.id,
+      property_address: formData.property_address,
+      sale_price: parseFloat(formData.sale_price),
+      commission_rate: parseFloat(formData.commission_rate),
+      status: formData.status,
+      closing_date: formData.closing_date || null,
+      contract_date: formData.contract_date || null,
+      inspection_date: formData.inspection_date || null,
+      appraisal_date: formData.appraisal_date || null,
+      milestone: formData.milestone,
+      notes: formData.notes || null,
+      client_name: formData.client_name || null,
+      client_type: formData.client_type
     }
-    resetForm()
-  }
 
-  const toggleMilestone = (txId: number, milestone: string) => {
-    setTransactions(transactions.map(tx => {
-      if (tx.id === txId) {
-        const newMilestones = { ...tx.milestones, [milestone]: !tx.milestones[milestone] }
-        const completedCount = Object.values(newMilestones).filter(Boolean).length
-        let newStatus = tx.status
-        if (completedCount === 8) newStatus = 'closed'
-        else if (completedCount >= 5) newStatus = 'closing'
-        else if (completedCount >= 1) newStatus = 'active'
-        return { ...tx, milestones: newMilestones, status: newStatus }
+    if (editingTransaction) {
+      const { error } = await supabase
+        .from('transactions')
+        .update(txnData)
+        .eq('id', editingTransaction.id)
+
+      if (error) {
+        console.error('Error updating transaction:', error)
+      } else {
+        setTransactions(transactions.map(t => t.id === editingTransaction.id ? { ...t, ...txnData, updated_at: new Date().toISOString() } : t))
+        resetForm()
       }
-      return tx
-    }))
+    } else {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert(txnData)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding transaction:', error)
+      } else if (data) {
+        setTransactions([data, ...transactions])
+        resetForm()
+      }
+    }
   }
 
-  const deleteTransaction = (id: number) => {
-    if (confirm('Delete this transaction?')) setTransactions(transactions.filter(t => t.id !== id))
+  const updateMilestone = async (txnId: string, newMilestone: number) => {
+    const newStatus = newMilestone >= 5 ? 'closed' : newMilestone >= 1 ? 'under-contract' : 'pending'
+
+    const { error } = await supabase
+      .from('transactions')
+      .update({ milestone: newMilestone, status: newStatus })
+      .eq('id', txnId)
+
+    if (error) {
+      console.error('Error updating milestone:', error)
+    } else {
+      setTransactions(transactions.map(t => 
+        t.id === txnId ? { ...t, milestone: newMilestone, status: newStatus } : t
+      ))
+      if (selectedTransaction?.id === txnId) {
+        setSelectedTransaction({ ...selectedTransaction, milestone: newMilestone, status: newStatus })
+      }
+    }
   }
 
-  const getProgress = (milestones: any) => {
-    if (!milestones) return 0
-    const completed = Object.values(milestones).filter(Boolean).length
-    return Math.round((completed / 8) * 100)
+  const deleteTransaction = async (txnId: string) => {
+    if (!confirm('Delete this transaction?')) return
+
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', txnId)
+
+    if (error) {
+      console.error('Error deleting transaction:', error)
+    } else {
+      setTransactions(transactions.filter(t => t.id !== txnId))
+      setSelectedTransaction(null)
+    }
+  }
+
+  const filteredTransactions = transactions.filter(txn => 
+    filterStatus === 'all' || txn.status === filterStatus
+  )
+
+  const calculateCommission = (price: number, rate: number) => price * (rate / 100)
+
+  const stats = {
+    active: transactions.filter(t => t.status === 'under-contract').length,
+    pending: transactions.filter(t => t.status === 'pending').length,
+    closed: transactions.filter(t => t.status === 'closed').length,
+    closedValue: transactions.filter(t => t.status === 'closed').reduce((sum, t) => sum + calculateCommission(t.sale_price, t.commission_rate), 0),
+    pipelineValue: transactions.filter(t => t.status !== 'cancelled' && t.status !== 'closed').reduce((sum, t) => sum + calculateCommission(t.sale_price, t.commission_rate), 0)
+  }
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '—'
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', color: '#fff', padding: '1rem' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link href="/dashboard" style={{ color: '#D4AF37', fontSize: '1.5rem' }}>←</Link>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>🏠 Transaction Tracker</h1>
-            <span style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{activeTransactions.length} active</span>
-          </div>
-          <button onClick={() => setShowForm(true)} style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Add Transaction</button>
+    <div className="animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">📋 Transaction Tracker</h1>
+          <p className="text-gray-400">Manage your deals from contract to closing</p>
         </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <span>+</span> Add Transaction
+        </button>
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
-            <div style={{ fontSize: '0.875rem', color: '#999' }}>YTD Commission (2026)</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4A9B7F' }}>${ytdCommission.toLocaleString()}</div>
-          </div>
-          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
-            <div style={{ fontSize: '0.875rem', color: '#999' }}>Pending Commission</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#D4AF37' }}>${pendingCommission.toLocaleString()}</div>
-          </div>
-          <div style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333' }}>
-            <div style={{ fontSize: '0.875rem', color: '#999' }}>Closed This Year</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{closedTransactions.filter(tx => tx.closingDate?.startsWith('2026')).length}</div>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-blue-400">{stats.active}</p>
+          <p className="text-gray-400 text-sm">Under Contract</p>
         </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
-            <option value="all">All Transactions</option>
-            <option value="pending">Pending</option>
-            <option value="active">Active</option>
-            <option value="closing">Closing</option>
-            <option value="closed">Closed</option>
-          </select>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-gray-400">{stats.pending}</p>
+          <p className="text-gray-400 text-sm">Pending</p>
         </div>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-green-400">{stats.closed}</p>
+          <p className="text-gray-400 text-sm">Closed</p>
+        </div>
+        <div className="card text-center border-primary-500/30">
+          <p className="text-2xl font-bold text-primary-500">{formatCurrency(stats.pipelineValue)}</p>
+          <p className="text-gray-400 text-sm">Pipeline GCI</p>
+        </div>
+        <div className="card text-center border-green-500/30">
+          <p className="text-2xl font-bold text-green-400">{formatCurrency(stats.closedValue)}</p>
+          <p className="text-gray-400 text-sm">Closed GCI</p>
+        </div>
+      </div>
 
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {filteredTransactions.map(tx => {
-            const progress = getProgress(tx.milestones)
-            const commission = (parseFloat(tx.price) * (tx.commission / 100))
+      {/* Filters */}
+      <div className="flex gap-4 mb-6">
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="input-field"
+        >
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="under-contract">Under Contract</option>
+          <option value="closed">Closed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      {/* Transactions List */}
+      {loading ? (
+        <div className="card text-center py-12">
+          <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-400">Loading transactions...</p>
+        </div>
+      ) : filteredTransactions.length === 0 ? (
+        <div className="card text-center py-12">
+          <span className="text-4xl mb-4 block">📋</span>
+          <p className="text-gray-400 mb-4">
+            {filterStatus !== 'all' ? 'No transactions match your filter' : 'No transactions yet'}
+          </p>
+          {filterStatus === 'all' && (
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              Add Your First Transaction
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredTransactions.map(txn => {
+            const config = statusConfig[txn.status]
+            const commission = calculateCommission(txn.sale_price, txn.commission_rate)
             
             return (
-              <div key={tx.id} onClick={() => openEditForm(tx)} className="group" style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-                      <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>{tx.address}</span>
-                      <span style={{ backgroundColor: getStatusColor(tx.status), padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', textTransform: 'uppercase' }}>{tx.status}</span>
-                      <span style={{ backgroundColor: tx.clientType === 'buyer' ? '#4A9B7F' : '#6B8DD6', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>{tx.clientType === 'buyer' ? '🏠 Buyer' : '💰 Seller'}</span>
+              <div
+                key={txn.id}
+                onClick={() => setSelectedTransaction(txn)}
+                className="card cursor-pointer hover:border-primary-500/50 transition-all"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-xl">{config.icon}</span>
+                      <h3 className="font-semibold text-white">{txn.property_address}</h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${config.color}`}>
+                        {config.label}
+                      </span>
                     </div>
-                    <div style={{ fontSize: '0.875rem', color: '#999' }}>
-                      👤 {tx.clientName} • 💵 ${parseFloat(tx.price).toLocaleString()} • 📅 Close: {tx.closingDate ? new Date(tx.closingDate).toLocaleDateString() : 'TBD'}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#4A9B7F', marginTop: '0.25rem' }}>
-                      Commission: ${commission.toLocaleString()} ({tx.commission}%)
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                      {txn.client_name && (
+                        <span>{txn.client_type === 'buyer' ? '🏠' : '💰'} {txn.client_name}</span>
+                      )}
+                      <span>Sale: {formatCurrency(txn.sale_price)}</span>
+                      <span className="text-primary-500 font-semibold">GCI: {formatCurrency(commission)}</span>
+                      {txn.closing_date && (
+                        <span>📅 Closing: {formatDate(txn.closing_date)}</span>
+                      )}
                     </div>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); deleteTransaction(tx.id) }} className="delete-btn" style={{ backgroundColor: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.25rem', padding: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}>🗑️</button>
-                </div>
-
-                {/* Progress Bar */}
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#999', marginBottom: '0.25rem' }}>
-                    <span>Progress</span>
-                    <span>{progress}%</span>
+                  
+                  {/* Mini Milestone Progress */}
+                  <div className="flex items-center gap-1">
+                    {milestones.slice(0, 6).map((m, idx) => (
+                      <div
+                        key={m.id}
+                        className={`w-3 h-3 rounded-full ${idx <= txn.milestone ? 'bg-primary-500' : 'bg-gray-600'}`}
+                        title={m.label}
+                      />
+                    ))}
                   </div>
-                  <div style={{ height: '6px', backgroundColor: '#333', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${progress}%`, backgroundColor: progress === 100 ? '#4A9B7F' : '#D4AF37', transition: 'width 0.3s' }} />
-                  </div>
-                </div>
-
-                {/* Milestone Indicators */}
-                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
-                  {milestoneSteps.map(step => (
-                    <button key={step.key} onClick={() => toggleMilestone(tx.id, step.key)} style={{ backgroundColor: tx.milestones?.[step.key] ? '#4A9B7F' : '#333', border: 'none', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.625rem', cursor: 'pointer', color: '#fff', transition: 'background-color 0.2s' }} title={step.label}>
-                      {step.icon} {step.label}
-                    </button>
-                  ))}
                 </div>
               </div>
             )
           })}
         </div>
+      )}
 
-        {showForm && (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-            <div style={{ backgroundColor: '#2a2a2a', borderRadius: '1rem', padding: '1.5rem', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{editingTx ? '✏️ Edit Transaction' : '➕ Add Transaction'}</h2>
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <input type="text" placeholder="Property Address *" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input type="text" placeholder="Client Name *" value={formData.clientName} onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                  <select value={formData.clientType} onChange={(e) => setFormData({ ...formData, clientType: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
-                    <option value="buyer">Buyer</option>
-                    <option value="seller">Seller</option>
-                  </select>
+      {/* Transaction Detail Modal */}
+      {selectedTransaction && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 bg-dark-card">
+              <div>
+                <h2 className="text-xl font-bold text-white">{selectedTransaction.property_address}</h2>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig[selectedTransaction.status].color}`}>
+                  {statusConfig[selectedTransaction.status].label}
+                </span>
+              </div>
+              <button onClick={() => setSelectedTransaction(null)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Financial Summary */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-dark-bg rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-white">{formatCurrency(selectedTransaction.sale_price)}</p>
+                  <p className="text-gray-400 text-sm">Sale Price</p>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input type="email" placeholder="Client Email" value={formData.clientEmail} onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                  <input type="tel" placeholder="Client Phone" value={formData.clientPhone} onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+                <div className="bg-dark-bg rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-primary-500">{selectedTransaction.commission_rate}%</p>
+                  <p className="text-gray-400 text-sm">Commission</p>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                  <input type="number" placeholder="Price *" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                  <input type="number" step="0.1" placeholder="Commission %" value={formData.commission} onChange={(e) => setFormData({ ...formData, commission: parseFloat(e.target.value) || 3 })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
-                    <option value="pending">Pending</option>
-                    <option value="active">Active</option>
-                    <option value="closing">Closing</option>
-                    <option value="closed">Closed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: '#999' }}>Contract Date</label>
-                    <input type="date" value={formData.contractDate} onChange={(e) => setFormData({ ...formData, contractDate: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', color: '#999' }}>Closing Date</label>
-                    <input type="date" value={formData.closingDate} onChange={(e) => setFormData({ ...formData, closingDate: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
-                  </div>
+                <div className="bg-dark-bg rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-green-400">{formatCurrency(calculateCommission(selectedTransaction.sale_price, selectedTransaction.commission_rate))}</p>
+                  <p className="text-gray-400 text-sm">Your GCI</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button onClick={resetForm} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
-                <button onClick={saveTransaction} disabled={!formData.address || !formData.clientName || !formData.price} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: '#D4AF37', color: '#000', cursor: 'pointer', fontWeight: '600', opacity: formData.address && formData.clientName && formData.price ? 1 : 0.5 }}>{editingTx ? 'Save Changes' : 'Add Transaction'}</button>
+
+              {/* Client Info */}
+              {selectedTransaction.client_name && (
+                <div>
+                  <p className="text-gray-500 text-sm mb-1">Client</p>
+                  <p className="text-white">
+                    {selectedTransaction.client_type === 'buyer' ? '🏠 Buyer' : '💰 Seller'}: {selectedTransaction.client_name}
+                  </p>
+                </div>
+              )}
+
+              {/* Key Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-500 text-sm">Contract Date</p>
+                  <p className="text-white">{formatDate(selectedTransaction.contract_date)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm">Closing Date</p>
+                  <p className="text-white">{formatDate(selectedTransaction.closing_date)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm">Inspection</p>
+                  <p className="text-white">{formatDate(selectedTransaction.inspection_date)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm">Appraisal</p>
+                  <p className="text-white">{formatDate(selectedTransaction.appraisal_date)}</p>
+                </div>
               </div>
+
+              {/* Milestone Tracker */}
+              <div>
+                <p className="text-gray-500 text-sm mb-3">Progress</p>
+                <div className="flex items-center justify-between">
+                  {milestones.map((m, idx) => (
+                    <button
+                      key={m.id}
+                      onClick={() => updateMilestone(selectedTransaction.id, m.id)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
+                        idx <= selectedTransaction.milestone 
+                          ? 'bg-primary-500/20 text-primary-500' 
+                          : 'bg-dark-bg text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      <span className="text-lg">{m.icon}</span>
+                      <span className="text-xs hidden sm:block">{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedTransaction.notes && (
+                <div>
+                  <p className="text-gray-500 text-sm mb-1">Notes</p>
+                  <p className="text-white whitespace-pre-wrap">{selectedTransaction.notes}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-dark-border flex gap-3 sticky bottom-0 bg-dark-card">
+              <button 
+                onClick={() => deleteTransaction(selectedTransaction.id)} 
+                className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+              >
+                Delete
+              </button>
+              <button 
+                onClick={() => openEditForm(selectedTransaction)} 
+                className="btn-secondary flex-1"
+              >
+                Edit
+              </button>
+              <button onClick={() => setSelectedTransaction(null)} className="btn-primary flex-1">
+                Close
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <style jsx>{`
-        .group:hover .delete-btn { opacity: 1 !important; }
-      `}</style>
+      {/* Add/Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 bg-dark-card">
+              <h2 className="text-xl font-bold text-white">{editingTransaction ? 'Edit Transaction' : 'Add Transaction'}</h2>
+              <button onClick={resetForm} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Property Address *</label>
+                <input
+                  type="text"
+                  value={formData.property_address}
+                  onChange={(e) => setFormData({ ...formData, property_address: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="123 Main St, Orlando, FL 32801"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Client Name</label>
+                  <input
+                    type="text"
+                    value={formData.client_name}
+                    onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="John Smith"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Client Type</label>
+                  <select
+                    value={formData.client_type}
+                    onChange={(e) => setFormData({ ...formData, client_type: e.target.value as Transaction['client_type'] })}
+                    className="input-field w-full"
+                  >
+                    <option value="buyer">🏠 Buyer</option>
+                    <option value="seller">💰 Seller</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Sale Price *</label>
+                  <input
+                    type="number"
+                    value={formData.sale_price}
+                    onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="350000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Commission %</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formData.commission_rate}
+                    onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="3"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Contract Date</label>
+                  <input
+                    type="date"
+                    value={formData.contract_date}
+                    onChange={(e) => setFormData({ ...formData, contract_date: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Closing Date</label>
+                  <input
+                    type="date"
+                    value={formData.closing_date}
+                    onChange={(e) => setFormData({ ...formData, closing_date: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Inspection Date</label>
+                  <input
+                    type="date"
+                    value={formData.inspection_date}
+                    onChange={(e) => setFormData({ ...formData, inspection_date: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Appraisal Date</label>
+                  <input
+                    type="date"
+                    value={formData.appraisal_date}
+                    onChange={(e) => setFormData({ ...formData, appraisal_date: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="input-field w-full"
+                  rows={3}
+                  placeholder="Add notes about this transaction..."
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-dark-border flex gap-3 sticky bottom-0 bg-dark-card">
+              <button onClick={resetForm} className="btn-secondary flex-1">Cancel</button>
+              <button 
+                onClick={saveTransaction} 
+                className="btn-primary flex-1"
+                disabled={!formData.property_address.trim() || !formData.sale_price}
+              >
+                {editingTransaction ? 'Save Changes' : 'Add Transaction'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -2,38 +2,40 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
+import { createClient } from '@/lib/supabase/client'
 
 interface Lead {
   id: string
   name: string
-  email: string
-  phone: string
+  email: string | null
+  phone: string | null
   status: string
   type: string
   source: string
-  last_contact: string
-  notes: string
+  priority: number | null
+  follow_up_date: string | null
+  notes: string | null
   created_at: string
 }
 
 interface Appointment {
   id: string
   title: string
-  client_name: string
   date: string
   time: string
-  location: string
+  location: string | null
   type: string
-  notes: string
+  notes: string | null
 }
 
 interface Task {
   id: string
   title: string
-  due_date: string
+  due_date: string | null
   priority: string
   status: string
-  related_to: string
+  description: string | null
 }
 
 interface DigestInsight {
@@ -73,11 +75,8 @@ const groupTiles = {
   comms: { id: 'group-comms', title: 'Communications', icon: '💬', desc: 'Quick Replies & Drip Campaigns', color: '#4ECDC4', tools: ['templates', 'drip'] },
 }
 
-const LEADS_KEY = 'repal_leads'
-const APPOINTMENTS_KEY = 'repal_appointments'
-const TASKS_KEY = 'repal_tasks'
-
 export default function DashboardPage() {
+  const { user } = useUser()
   const [leads, setLeads] = useState<Lead[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -93,9 +92,11 @@ export default function DashboardPage() {
   const [dragOverTile, setDragOverTile] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
+  const supabase = createClient()
+
   useEffect(() => {
     setMounted(true)
-    loadData()
+    if (user) loadData()
     const savedOrder = localStorage.getItem('repal_tile_order')
     const savedHidden = localStorage.getItem('repal_hidden_tiles')
     const savedGroups = localStorage.getItem('repal_enabled_groups')
@@ -105,7 +106,7 @@ export default function DashboardPage() {
     if (savedGroups) setEnabledGroups(JSON.parse(savedGroups))
     const timer = setInterval(() => setCurrentTime(new Date()), 60000)
     return () => clearInterval(timer)
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (tileOrder.length > 0) localStorage.setItem('repal_tile_order', JSON.stringify(tileOrder))
@@ -119,14 +120,31 @@ export default function DashboardPage() {
     localStorage.setItem('repal_enabled_groups', JSON.stringify(enabledGroups))
   }, [enabledGroups])
 
-  const loadData = () => {
+  const loadData = async () => {
+    if (!user) return
     setLoading(true)
-    const savedLeads = localStorage.getItem(LEADS_KEY)
-    if (savedLeads) setLeads(JSON.parse(savedLeads))
-    const savedAppointments = localStorage.getItem(APPOINTMENTS_KEY)
-    if (savedAppointments) setAppointments(JSON.parse(savedAppointments))
-    const savedTasks = localStorage.getItem(TASKS_KEY)
-    if (savedTasks) setTasks(JSON.parse(savedTasks))
+    
+    // Fetch leads from Supabase
+    const { data: leadsData } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('user_id', user.id)
+    if (leadsData) setLeads(leadsData)
+    
+    // Fetch appointments from Supabase
+    const { data: appointmentsData } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('user_id', user.id)
+    if (appointmentsData) setAppointments(appointmentsData)
+    
+    // Fetch tasks from Supabase
+    const { data: tasksData } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', user.id)
+    if (tasksData) setTasks(tasksData)
+    
     setLoading(false)
   }
 
@@ -180,28 +198,26 @@ export default function DashboardPage() {
     return '🌙 Good Evening'
   }
 
-  const daysSinceContact = (dateStr: string) => {
-    if (!dateStr) return 999
-    const date = new Date(dateStr)
-    const now = new Date()
-    return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-  }
+  const today = new Date().toISOString().split('T')[0]
 
   const getTodayAppointments = () => {
-    const today = new Date().toISOString().split('T')[0]
     return appointments.filter(apt => apt.date === today)
   }
 
   const getLeadsNeedingFollowup = () => {
+    // Leads with follow_up_date today or in the past, not closed/lost
     return leads.filter(lead => {
-      const days = daysSinceContact(lead.last_contact)
-      return days >= 14 && lead.status !== 'closed' && lead.status !== 'lost'
-    }).sort((a, b) => daysSinceContact(b.last_contact) - daysSinceContact(a.last_contact))
+      if (!lead.follow_up_date) return false
+      return lead.follow_up_date <= today && lead.status !== 'closed' && lead.status !== 'lost'
+    }).sort((a, b) => (a.follow_up_date || '').localeCompare(b.follow_up_date || ''))
+  }
+
+  const getHotLeads = () => {
+    return leads.filter(lead => (lead.priority || 5) <= 3 && lead.status !== 'closed' && lead.status !== 'lost')
   }
 
   const getOverdueTasks = () => {
-    const today = new Date().toISOString().split('T')[0]
-    return tasks.filter(task => task.due_date < today && task.status !== 'completed')
+    return tasks.filter(task => task.due_date && task.due_date < today && task.status !== 'completed')
   }
 
   const generateInsights = (): DigestInsight[] => {
@@ -212,18 +228,17 @@ export default function DashboardPage() {
     }
     const todayApts = getTodayAppointments()
     if (todayApts.length > 0) {
-      insights.push({ type: 'priority', icon: '📅', title: `${todayApts.length} Appointment${todayApts.length > 1 ? 's' : ''} Today`, description: todayApts.map(apt => `${apt.time} - ${apt.client_name}`).join(' • '), action: 'View Schedule', link: '/dashboard/appointments' })
+      insights.push({ type: 'priority', icon: '📅', title: `${todayApts.length} Appointment${todayApts.length > 1 ? 's' : ''} Today`, description: todayApts.map(apt => `${apt.time} - ${apt.title}`).join(' • '), action: 'View Schedule', link: '/dashboard/appointments' })
     }
     const needFollowup = getLeadsNeedingFollowup()
     if (needFollowup.length > 0) {
-      const urgent = needFollowup.filter(l => daysSinceContact(l.last_contact) >= 30)
-      if (urgent.length > 0) {
-        insights.push({ type: 'alert', icon: '⚠️', title: `${urgent.length} Lead${urgent.length > 1 ? 's' : ''} Going Cold`, description: `${urgent[0].name} hasn't been contacted in ${daysSinceContact(urgent[0].last_contact)} days`, action: 'Contact Now', link: '/dashboard/leads' })
-      } else {
-        insights.push({ type: 'suggestion', icon: '📞', title: `${needFollowup.length} Lead${needFollowup.length > 1 ? 's' : ''} Need Follow-up`, description: `${needFollowup[0].name} - last contact ${daysSinceContact(needFollowup[0].last_contact)} days ago`, action: 'View Leads', link: '/dashboard/leads' })
-      }
+      insights.push({ type: 'suggestion', icon: '📞', title: `${needFollowup.length} Lead${needFollowup.length > 1 ? 's' : ''} Need Follow-up`, description: `${needFollowup[0].name} - scheduled for ${needFollowup[0].follow_up_date}`, action: 'View Leads', link: '/dashboard/leads' })
     }
-    const coldLeads = leads.filter(l => daysSinceContact(l.last_contact) >= 30 && l.status !== 'closed' && l.status !== 'lost')
+    const hotLeads = getHotLeads()
+    if (hotLeads.length > 0) {
+      insights.push({ type: 'opportunity', icon: '🔥', title: `${hotLeads.length} Hot Lead${hotLeads.length > 1 ? 's' : ''}`, description: `${hotLeads[0].name} is priority ${hotLeads[0].priority} - reach out today!`, action: 'View Leads', link: '/dashboard/leads' })
+    }
+    const coldLeads = leads.filter(l => (l.priority || 5) >= 7 && l.status !== 'closed' && l.status !== 'lost')
     if (coldLeads.length >= 5) {
       insights.push({ type: 'opportunity', icon: '📧', title: `${coldLeads.length} Cold Leads to Re-engage`, description: 'A market update newsletter could warm up these leads', action: 'Create Newsletter', link: '/dashboard/drip' })
     }
@@ -231,8 +246,8 @@ export default function DashboardPage() {
   }
 
   const insights = generateInsights()
-  const stats = { todayAppointments: getTodayAppointments().length, needFollowup: getLeadsNeedingFollowup().length, overdueTasks: getOverdueTasks().length, hotLeads: leads.filter(l => l.status === 'hot').length }
-  const urgentAlerts = stats.overdueTasks + leads.filter(l => daysSinceContact(l.last_contact) >= 30 && l.status !== 'closed' && l.status !== 'lost').length
+  const stats = { todayAppointments: getTodayAppointments().length, needFollowup: getLeadsNeedingFollowup().length, overdueTasks: getOverdueTasks().length, hotLeads: getHotLeads().length }
+  const urgentAlerts = stats.overdueTasks + stats.needFollowup
 
   const getVisibleTiles = () => {
     const tiles: any[] = []

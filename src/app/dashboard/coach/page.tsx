@@ -6,6 +6,8 @@ import Link from 'next/link'
 export default function CoachPage() {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
   const [customQuestion, setCustomQuestion] = useState('')
+  const [coachResponse, setCoachResponse] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const topics = [
     { id: 'objections', icon: '🛡️', title: 'Handle Objections', desc: 'Scripts for common buyer/seller objections' },
@@ -47,6 +49,30 @@ export default function CoachPage() {
     buyer: [
       { title: 'Opening', content: 'Thanks for meeting with me today! Before we look at homes, I want to understand exactly what you\'re looking for so I can find the perfect match. Tell me about your ideal home...' },
     ],
+  }
+
+  const getCoachingAdvice = async () => {
+    if (!customQuestion.trim()) return
+    
+    setIsLoading(true)
+    setCoachResponse('')
+    
+    try {
+      const response = await fetch('/api/coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: customQuestion })
+      })
+      
+      if (!response.ok) throw new Error('Failed to get advice')
+      
+      const data = await response.json()
+      setCoachResponse(data.advice)
+    } catch (error) {
+      setCoachResponse('Sorry, I couldn\'t get coaching advice right now. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -110,9 +136,26 @@ export default function CoachPage() {
           placeholder="e.g., A seller says my commission is too high and their neighbor only paid 4%. How should I respond?"
           className="w-full min-h-[100px] px-4 py-3 bg-[#0D0D0D] border border-dark-border rounded-lg text-white outline-none focus:border-primary-500 resize-y mb-4"
         />
-        <button className="w-full py-3 bg-primary-500 text-dark-bg rounded-lg font-semibold hover:bg-primary-400 transition-colors">
-          🎯 Get Coaching Advice
+        <button 
+          onClick={getCoachingAdvice}
+          disabled={isLoading || !customQuestion.trim()}
+          className="w-full py-3 bg-primary-500 text-dark-bg rounded-lg font-semibold hover:bg-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? '⏳ Getting advice...' : '🎯 Get Coaching Advice'}
         </button>
+        
+        {coachResponse && (
+          <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+            <h4 className="text-green-400 font-semibold mb-2">🎯 Coach Says:</h4>
+            <p className="text-gray-300 whitespace-pre-wrap">{coachResponse}</p>
+            <button 
+              onClick={() => navigator.clipboard.writeText(coachResponse)}
+              className="mt-3 px-4 py-2 bg-[#4ECDC4]/20 text-[#4ECDC4] rounded-lg text-sm font-semibold hover:bg-[#4ECDC4]/30 transition-colors"
+            >
+              📋 Copy Response
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Quick Tips */}

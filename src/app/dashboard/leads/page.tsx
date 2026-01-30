@@ -100,9 +100,11 @@ export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPriority, setFilterPriority] = useState('all')
+  const [filterFollowupToday, setFilterFollowupToday] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [importStatus, setImportStatus] = useState('')
+  const notesScrollRef = useRef<HTMLDivElement>(null)
   
   const { isListening, transcript, isSupported, toggleListening, setTranscript } = useSpeechToText()
   
@@ -133,6 +135,15 @@ export default function LeadsPage() {
       setTranscript('')
     }
   }, [transcript, setTranscript])
+
+  // Auto-scroll notes to bottom when lead is selected
+  useEffect(() => {
+    if (selectedLead && notesScrollRef.current) {
+      setTimeout(() => {
+        notesScrollRef.current?.scrollTo({ top: notesScrollRef.current.scrollHeight, behavior: 'smooth' })
+      }, 100)
+    }
+  }, [selectedLead])
 
   useEffect(() => {
     if (user) fetchLeads()
@@ -326,6 +337,7 @@ export default function LeadsPage() {
   }
 
   // Filter and sort leads
+  const today = new Date().toISOString().split('T')[0]
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -335,7 +347,8 @@ export default function LeadsPage() {
       (filterPriority === 'hot' && (lead.priority || 5) <= 3) ||
       (filterPriority === 'warm' && (lead.priority || 5) >= 4 && (lead.priority || 5) <= 6) ||
       (filterPriority === 'cold' && (lead.priority || 5) >= 7)
-    return matchesSearch && matchesStatus && matchesPriority
+    const matchesFollowup = !filterFollowupToday || lead.follow_up_date === today
+    return matchesSearch && matchesStatus && matchesPriority && matchesFollowup
   }).sort((a, b) => (a.priority || 10) - (b.priority || 10))
 
   const formatDate = (dateStr: string) => {
@@ -345,7 +358,7 @@ export default function LeadsPage() {
   // Stats
   const hotLeads = leads.filter(l => (l.priority || 5) <= 3)
   const warmLeads = leads.filter(l => (l.priority || 5) >= 4 && (l.priority || 5) <= 6)
-  const todayFollowUps = leads.filter(l => l.follow_up_date === new Date().toISOString().split('T')[0])
+  const todayFollowUps = leads.filter(l => l.follow_up_date === today)
 
   return (
     <div className="animate-fade-in">
@@ -405,24 +418,36 @@ export default function LeadsPage() {
         </select>
       </div>
 
-      {/* Stats */}
+      {/* Stats - Clickable to filter */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="card text-center">
+        <button 
+          onClick={() => { setFilterPriority('all'); setFilterStatus('all'); setFilterFollowupToday(false); }}
+          className={`card text-center transition-all hover:scale-105 ${filterPriority === 'all' && filterStatus === 'all' && !filterFollowupToday ? 'ring-2 ring-white/50' : ''}`}
+        >
           <p className="text-2xl font-bold text-white">{leads.length}</p>
           <p className="text-gray-400 text-sm">Total Leads</p>
-        </div>
-        <div className="card text-center border-orange-500/30">
+        </button>
+        <button 
+          onClick={() => { setFilterPriority('hot'); setFilterStatus('all'); setFilterFollowupToday(false); }}
+          className={`card text-center border-orange-500/30 transition-all hover:scale-105 hover:border-orange-500 ${filterPriority === 'hot' ? 'ring-2 ring-orange-500' : ''}`}
+        >
           <p className="text-2xl font-bold text-orange-400">🔥 {hotLeads.length}</p>
           <p className="text-gray-400 text-sm">Hot Leads</p>
-        </div>
-        <div className="card text-center border-primary-500/30">
+        </button>
+        <button 
+          onClick={() => { setFilterPriority('warm'); setFilterStatus('all'); setFilterFollowupToday(false); }}
+          className={`card text-center border-primary-500/30 transition-all hover:scale-105 hover:border-primary-500 ${filterPriority === 'warm' ? 'ring-2 ring-primary-500' : ''}`}
+        >
           <p className="text-2xl font-bold text-primary-500">☀️ {warmLeads.length}</p>
           <p className="text-gray-400 text-sm">Warm Leads</p>
-        </div>
-        <div className="card text-center border-green-500/30">
+        </button>
+        <button 
+          onClick={() => { setFilterPriority('all'); setFilterStatus('all'); setFilterFollowupToday(!filterFollowupToday); }}
+          className={`card text-center border-green-500/30 transition-all hover:scale-105 hover:border-green-500 ${filterFollowupToday ? 'ring-2 ring-green-500' : ''}`}
+        >
           <p className="text-2xl font-bold text-green-400">{todayFollowUps.length}</p>
           <p className="text-gray-400 text-sm">Follow-ups Today</p>
-        </div>
+        </button>
       </div>
 
       {/* Today's Follow-ups Alert */}
@@ -512,7 +537,7 @@ export default function LeadsPage() {
       {/* Add/Edit Lead Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 bg-dark-card">
               <h2 className="text-xl font-bold text-white">{editingLead ? 'Edit Lead' : 'Add New Lead'}</h2>
               <button onClick={resetForm} className="text-gray-400 hover:text-white">
@@ -689,61 +714,88 @@ export default function LeadsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">🎂 Birthday</label>
+                  <label className="block text-gray-400 text-sm mb-1">🎂 BIRTHDAY</label>
                   <input
                     type="date"
                     value={formData.birthday}
                     onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
                     className="input-field w-full"
+                    placeholder="mm/dd/yyyy"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">🏠 Home Anniversary</label>
+                  <label className="block text-gray-400 text-sm mb-1">🏠 HOME ANNIVERSARY</label>
                   <input
                     type="date"
                     value={formData.home_anniversary}
                     onChange={(e) => setFormData({ ...formData, home_anniversary: e.target.value })}
                     className="input-field w-full"
+                    placeholder="mm/dd/yyyy"
                   />
                 </div>
               </div>
 
-              {/* Notes with Voice */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-gray-400 text-sm">Notes</label>
+              {/* Notes Log Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-gray-400 text-sm font-semibold tracking-wide">NOTES LOG</label>
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={addTimestampToNotes}
-                      className="text-xs px-2 py-1 bg-dark-border text-gray-400 rounded hover:text-white transition-colors"
+                      className="px-3 py-1.5 bg-dark-border text-gray-300 rounded-lg text-sm hover:bg-dark-border/80 transition-colors flex items-center gap-1"
                     >
-                      + Timestamp
+                      📁 AI Follow-up
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 bg-dark-border text-gray-300 rounded-lg text-sm hover:bg-dark-border/80 transition-colors flex items-center gap-1"
+                    >
+                      ✨ AI Rewrite
                     </button>
                     {isSupported && (
                       <button
                         type="button"
                         onClick={toggleListening}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${
-                          isListening ? 'bg-orange-500 text-white' : 'bg-dark-border text-gray-400 hover:text-white'
+                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1 ${
+                          isListening ? 'bg-orange-500 text-white' : 'bg-dark-border text-gray-300 hover:bg-dark-border/80'
                         }`}
                       >
-                        🎤 {isListening ? 'Stop' : 'Voice'}
+                        🎤 Voice
                       </button>
                     )}
                   </div>
                 </div>
+
                 {isListening && (
-                  <div className="flex items-center gap-2 text-orange-400 text-sm mb-2">
+                  <div className="flex items-center gap-2 text-orange-400 text-sm">
                     <span className="animate-pulse">●</span> Listening...
                   </div>
                 )}
+
+                {/* Add New Note Entry */}
+                <div className="p-4 bg-teal-500/10 border border-teal-500/30 rounded-xl">
+                  <p className="text-teal-400 text-sm font-semibold mb-3 flex items-center gap-1">
+                    📝 ADD NEW NOTE ENTRY
+                  </p>
+                  <button
+                    type="button"
+                    onClick={addTimestampToNotes}
+                    className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-dark-bg font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    ⏱️ Add Timestamped Entry
+                  </button>
+                  <p className="text-gray-500 text-xs text-center mt-2 italic">
+                    Always timestamp your notes so other agents can follow the conversation history
+                  </p>
+                </div>
+
+                {/* Notes Display Area */}
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="input-field w-full"
-                  rows={4}
-                  placeholder="Add notes about this lead..."
+                  className="input-field w-full font-mono text-sm"
+                  rows={6}
+                  placeholder="[1/27/2026 @ 9:00 AM] Met at open house. Looking for 3BR in Winter Park..."
                 />
               </div>
             </div>
@@ -762,7 +814,7 @@ export default function LeadsPage() {
       {/* Lead Detail Modal */}
       {selectedLead && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 bg-dark-card">
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getPriorityColor(selectedLead.priority || 5).bg}`}>
@@ -863,12 +915,70 @@ export default function LeadsPage() {
                   )}
                 </div>
               )}
-              {selectedLead.notes && (
-                <div>
-                  <p className="text-gray-500 text-sm">Notes</p>
-                  <p className="text-white whitespace-pre-wrap">{selectedLead.notes}</p>
+              {/* Notes Log Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-gray-400 text-sm font-semibold tracking-wide">NOTES LOG</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 bg-dark-border text-gray-300 rounded-lg text-sm hover:bg-dark-border/80 transition-colors flex items-center gap-1"
+                    >
+                      📁 AI Follow-up
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 bg-dark-border text-gray-300 rounded-lg text-sm hover:bg-dark-border/80 transition-colors flex items-center gap-1"
+                    >
+                      ✨ AI Rewrite
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1 ${
+                        isListening ? 'bg-orange-500 text-white' : 'bg-dark-border text-gray-300 hover:bg-dark-border/80'
+                      }`}
+                    >
+                      🎤 Voice
+                    </button>
+                  </div>
                 </div>
-              )}
+
+                {isListening && (
+                  <div className="flex items-center gap-2 text-orange-400 text-sm">
+                    <span className="animate-pulse">●</span> Listening...
+                  </div>
+                )}
+
+                {/* Add New Note Entry */}
+                <div className="p-4 bg-teal-500/10 border border-teal-500/30 rounded-xl">
+                  <p className="text-teal-400 text-sm font-semibold mb-3 flex items-center gap-1">
+                    📝 ADD NEW NOTE ENTRY
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => editLead(selectedLead)}
+                    className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-dark-bg font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    ⏱️ Add Timestamped Entry
+                  </button>
+                  <p className="text-gray-500 text-xs text-center mt-2 italic">
+                    Always timestamp your notes so other agents can follow the conversation history
+                  </p>
+                </div>
+
+                {/* Notes Display Area */}
+                <div 
+                  ref={notesScrollRef}
+                  className="p-4 bg-dark-bg border border-dark-border rounded-xl max-h-48 overflow-y-auto"
+                >
+                  {selectedLead.notes ? (
+                    <p className="text-white whitespace-pre-wrap font-mono text-sm">{selectedLead.notes}</p>
+                  ) : (
+                    <p className="text-gray-500 italic text-sm">No notes yet. Click "Add Timestamped Entry" to add your first note.</p>
+                  )}
+                </div>
+              </div>
               <div>
                 <p className="text-gray-500 text-sm mb-2">Update Status</p>
                 <div className="flex flex-wrap gap-2">

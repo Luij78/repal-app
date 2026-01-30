@@ -1,29 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
+import { createClient } from '@/lib/supabase/client'
 
-const sampleTasks = [
-  // Overdue tasks
-  { id: 1, title: 'Follow up with Susan Clark', description: 'Zillow lead from 4 months ago - try re-engaging with new listings', dueDate: '2026-01-18', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-10' },
-  { id: 2, title: 'Send CMA to Emily Davis', description: 'She requested market analysis for her Lake Mary townhome', dueDate: '2026-01-20', priority: 'medium', category: 'paperwork', completed: false, createdAt: '2026-01-15' },
-  // Due today
-  { id: 3, title: 'Confirm showing with Marcus Johnson', description: 'Call to confirm 2pm showing appointment', dueDate: '2026-01-24', priority: 'high', category: 'showing', completed: false, createdAt: '2026-01-20' },
-  { id: 4, title: 'Prepare listing presentation', description: 'Sarah Chen meeting - finalize CMA and marketing plan', dueDate: '2026-01-24', priority: 'high', category: 'paperwork', completed: false, createdAt: '2026-01-19' },
-  { id: 5, title: 'Call Raymond Green', description: '1031 exchange - need to discuss property options urgently', dueDate: '2026-01-24', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-21' },
-  // Upcoming tasks
-  { id: 6, title: 'Schedule VA loan consultation', description: 'Connect Frank & Helen King with VA lender', dueDate: '2026-01-26', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-20' },
-  { id: 7, title: 'Send investor newsletter', description: 'Monthly market update for investor leads', dueDate: '2026-01-25', priority: 'medium', category: 'marketing', completed: false, createdAt: '2026-01-15' },
-  { id: 8, title: 'Order closing gift', description: 'Williams family closing on Jan 30 - order gift basket', dueDate: '2026-01-27', priority: 'low', category: 'closing', completed: false, createdAt: '2026-01-18' },
-  { id: 9, title: 'Follow up with FSBO Carol Scott', description: 'She was ready to sign listing agreement - confirm appointment', dueDate: '2026-01-24', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-19' },
-  { id: 10, title: 'Research 55+ communities', description: 'Compile list for Robert & Linda Williams - Solivita, Del Webb, etc.', dueDate: '2026-01-26', priority: 'medium', category: 'general', completed: false, createdAt: '2026-01-20' },
-  { id: 11, title: 'Update MLS listings', description: 'Add new photos to active listings', dueDate: '2026-01-28', priority: 'medium', category: 'paperwork', completed: false, createdAt: '2026-01-22' },
-  { id: 12, title: 'Call Elizabeth Turner', description: 'Travel nurse - confirm pre-approval with Navy Federal', dueDate: '2026-01-25', priority: 'high', category: 'followup', completed: false, createdAt: '2026-01-20' },
-  // Completed tasks
-  { id: 13, title: 'Set up MLS search for Jennifer Thompson', description: 'Oviedo/Winter Springs, 4BR, good schools, under $320K', dueDate: '2026-01-19', priority: 'high', category: 'general', completed: true, completedAt: '2026-01-19', createdAt: '2026-01-17' },
-  { id: 14, title: 'Send pre-approval referral to Kevin Brown', description: 'Connected with mortgage lender', dueDate: '2026-01-20', priority: 'medium', category: 'followup', completed: true, completedAt: '2026-01-20', createdAt: '2026-01-18' },
-  { id: 15, title: 'Call institutional investor Raymond Green', description: 'Initial consultation about multi-family properties', dueDate: '2026-01-21', priority: 'high', category: 'followup', completed: true, completedAt: '2026-01-21', createdAt: '2026-01-20' }
-]
+interface Task {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  due_date: string | null
+  priority: 'low' | 'medium' | 'high'
+  status: 'pending' | 'completed'
+  category: string | null
+  lead_id: string | null
+  completed_at: string | null
+  created_at: string
+}
 
 const categories = [
   { value: 'followup', label: '📞 Follow-up', color: '#4A9B7F' },
@@ -35,34 +28,47 @@ const categories = [
 ]
 
 export default function TaskerPage() {
-  const [tasks, setTasks] = useState<any[]>([])
+  const { user } = useUser()
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [editingTask, setEditingTask] = useState<any>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [filterStatus, setFilterStatus] = useState('active')
   const [filterCategory, setFilterCategory] = useState('all')
   const [formData, setFormData] = useState({
-    title: '', description: '', dueDate: new Date().toISOString().split('T')[0], priority: 'medium', category: 'general'
+    title: '',
+    description: '',
+    due_date: new Date().toISOString().split('T')[0],
+    priority: 'medium' as Task['priority'],
+    category: 'general'
   })
 
+  const supabase = createClient()
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
-    const saved = localStorage.getItem('repal_tasks')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      setTasks(parsed.length > 0 ? parsed : sampleTasks)
+    if (user) fetchTasks()
+  }, [user])
+
+  const fetchTasks = async () => {
+    if (!user) return
+
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('due_date', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching tasks:', error)
     } else {
-      setTasks(sampleTasks)
+      setTasks(data || [])
     }
-  }, [])
+    setLoading(false)
+  }
 
-  useEffect(() => {
-    if (tasks.length > 0) {
-      localStorage.setItem('repal_tasks', JSON.stringify(tasks))
-    }
-  }, [tasks])
-
-  const getCategoryInfo = (cat: string) => categories.find(c => c.value === cat) || categories[categories.length - 1]
+  const getCategoryInfo = (cat: string | null) => categories.find(c => c.value === cat) || categories[categories.length - 1]
 
   const getPriorityColor = (p: string) => {
     if (p === 'high') return '#C97B63'
@@ -72,139 +78,367 @@ export default function TaskerPage() {
 
   const filteredTasks = tasks.filter(task => {
     const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'active' && !task.completed) ||
-      (filterStatus === 'completed' && task.completed)
+      (filterStatus === 'active' && task.status === 'pending') ||
+      (filterStatus === 'completed' && task.status === 'completed')
     const matchesCategory = filterCategory === 'all' || task.category === filterCategory
     return matchesStatus && matchesCategory
   }).sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1
+    if (a.status !== b.status) return a.status === 'completed' ? 1 : -1
     const priorityOrder = { high: 0, medium: 1, low: 2 }
-    if (priorityOrder[a.priority as keyof typeof priorityOrder] !== priorityOrder[b.priority as keyof typeof priorityOrder]) {
-      return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder]
+    if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+      return priorityOrder[a.priority] - priorityOrder[b.priority]
     }
-    return a.dueDate.localeCompare(b.dueDate)
+    return (a.due_date || '9999').localeCompare(b.due_date || '9999')
   })
 
-  const overdueCount = tasks.filter(t => !t.completed && t.dueDate < today).length
-  const todayCount = tasks.filter(t => !t.completed && t.dueDate === today).length
+  const overdueCount = tasks.filter(t => t.status === 'pending' && t.due_date && t.due_date < today).length
+  const todayCount = tasks.filter(t => t.status === 'pending' && t.due_date === today).length
+  const activeCount = tasks.filter(t => t.status === 'pending').length
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', dueDate: new Date().toISOString().split('T')[0], priority: 'medium', category: 'general' })
+    setFormData({
+      title: '',
+      description: '',
+      due_date: new Date().toISOString().split('T')[0],
+      priority: 'medium',
+      category: 'general'
+    })
     setShowForm(false)
     setEditingTask(null)
   }
 
-  const openEditForm = (task: any) => {
+  const openEditForm = (task: Task) => {
     setEditingTask(task)
     setFormData({
       title: task.title || '',
       description: task.description || '',
-      dueDate: task.dueDate || new Date().toISOString().split('T')[0],
-      priority: task.priority || 'medium',
+      due_date: task.due_date || new Date().toISOString().split('T')[0],
+      priority: task.priority,
       category: task.category || 'general'
     })
     setShowForm(true)
   }
 
-  const saveTask = () => {
-    if (editingTask) {
-      setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...formData } : t))
-    } else {
-      setTasks([...tasks, { ...formData, id: Date.now(), completed: false, createdAt: new Date().toISOString().split('T')[0] }])
+  const saveTask = async () => {
+    if (!user || !formData.title.trim()) return
+
+    const taskData = {
+      user_id: user.id,
+      title: formData.title,
+      description: formData.description || null,
+      due_date: formData.due_date || null,
+      priority: formData.priority,
+      category: formData.category,
+      status: 'pending' as const
     }
-    resetForm()
+
+    if (editingTask) {
+      const { error } = await supabase
+        .from('tasks')
+        .update(taskData)
+        .eq('id', editingTask.id)
+
+      if (error) {
+        console.error('Error updating task:', error)
+      } else {
+        setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...taskData } : t))
+        resetForm()
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(taskData)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding task:', error)
+      } else if (data) {
+        setTasks([data, ...tasks])
+        resetForm()
+      }
+    }
   }
 
-  const toggleComplete = (id: number) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString().split('T')[0] : null } : t))
+  const toggleComplete = async (task: Task) => {
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed'
+    const completedAt = newStatus === 'completed' ? new Date().toISOString() : null
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: newStatus, completed_at: completedAt })
+      .eq('id', task.id)
+
+    if (error) {
+      console.error('Error updating task:', error)
+    } else {
+      setTasks(tasks.map(t => 
+        t.id === task.id ? { ...t, status: newStatus, completed_at: completedAt } : t
+      ))
+    }
   }
 
-  const deleteTask = (id: number) => {
-    if (confirm('Delete this task?')) setTasks(tasks.filter(t => t.id !== id))
+  const deleteTask = async (taskId: string) => {
+    if (!confirm('Delete this task?')) return
+
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId)
+
+    if (error) {
+      console.error('Error deleting task:', error)
+    } else {
+      setTasks(tasks.filter(t => t.id !== taskId))
+    }
+  }
+
+  const getDueDateColor = (dueDate: string | null) => {
+    if (!dueDate) return 'text-gray-500'
+    if (dueDate < today) return 'text-red-400'
+    if (dueDate === today) return 'text-yellow-400'
+    return 'text-gray-400'
+  }
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'No due date'
+    const date = new Date(dateStr + 'T00:00:00')
+    if (dateStr === today) return 'Today'
+    if (dateStr < today) {
+      const days = Math.floor((new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+      return `${days}d overdue`
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', color: '#fff', padding: '1rem' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link href="/dashboard" style={{ color: '#D4AF37', fontSize: '1.5rem' }}>←</Link>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>✅ Tasker</h1>
-            {overdueCount > 0 && <span style={{ backgroundColor: '#C97B63', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{overdueCount} overdue</span>}
-            {todayCount > 0 && <span style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{todayCount} today</span>}
-          </div>
-          <button onClick={() => setShowForm(true)} style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Add Task</button>
+    <div className="animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">✓ Tasker</h1>
+          <p className="text-gray-400">Track your to-dos and follow-ups</p>
         </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <span>+</span> Add Task
+        </button>
+      </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
-            <option value="active">Active Tasks</option>
-            <option value="completed">Completed</option>
-            <option value="all">All Tasks</option>
-          </select>
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
-            <option value="all">All Categories</option>
-            {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-          </select>
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-white">{activeCount}</p>
+          <p className="text-gray-400 text-sm">Active Tasks</p>
         </div>
+        <div className="card text-center border-red-500/30">
+          <p className="text-2xl font-bold text-red-400">{overdueCount}</p>
+          <p className="text-gray-400 text-sm">Overdue</p>
+        </div>
+        <div className="card text-center border-yellow-500/30">
+          <p className="text-2xl font-bold text-yellow-400">{todayCount}</p>
+          <p className="text-gray-400 text-sm">Due Today</p>
+        </div>
+        <div className="card text-center border-green-500/30">
+          <p className="text-2xl font-bold text-green-400">{tasks.filter(t => t.status === 'completed').length}</p>
+          <p className="text-gray-400 text-sm">Completed</p>
+        </div>
+      </div>
 
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="input-field"
+        >
+          <option value="all">All Tasks</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+        </select>
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="input-field"
+        >
+          <option value="all">All Categories</option>
+          {categories.map(cat => (
+            <option key={cat.value} value={cat.value}>{cat.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Overdue Alert */}
+      {overdueCount > 0 && (
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+          <h3 className="text-red-400 font-semibold mb-2">🚨 {overdueCount} Overdue Task{overdueCount > 1 ? 's' : ''}</h3>
+          <p className="text-gray-400 text-sm">These need your attention!</p>
+        </div>
+      )}
+
+      {/* Tasks List */}
+      {loading ? (
+        <div className="card text-center py-12">
+          <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-400">Loading tasks...</p>
+        </div>
+      ) : filteredTasks.length === 0 ? (
+        <div className="card text-center py-12">
+          <span className="text-4xl mb-4 block">✓</span>
+          <p className="text-gray-400 mb-4">
+            {filterStatus !== 'all' || filterCategory !== 'all' ? 'No tasks match your filters' : 'No tasks yet'}
+          </p>
+          {filterStatus === 'all' && filterCategory === 'all' && (
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              Add Your First Task
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
           {filteredTasks.map(task => {
             const catInfo = getCategoryInfo(task.category)
-            const isOverdue = !task.completed && task.dueDate < today
-            const isToday = task.dueDate === today
+            const isCompleted = task.status === 'completed'
+            const isOverdue = !isCompleted && task.due_date && task.due_date < today
             
             return (
-              <div key={task.id} onClick={() => openEditForm(task)} className="group" style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: `1px solid ${isOverdue ? '#C97B63' : isToday ? '#D4AF37' : '#333'}`, display: 'flex', alignItems: 'center', gap: '1rem', opacity: task.completed ? 0.6 : 1, cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={(e) => { e.currentTarget.style.borderColor = isOverdue ? '#C97B63' : isToday ? '#D4AF37' : '#333'; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <input type="checkbox" checked={task.completed} onChange={(e) => { e.stopPropagation(); toggleComplete(task.id) }} onClick={(e) => e.stopPropagation()} style={{ width: '1.5rem', height: '1.5rem', accentColor: '#D4AF37', cursor: 'pointer' }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: '600', textDecoration: task.completed ? 'line-through' : 'none' }}>{task.title}</span>
-                    <span style={{ backgroundColor: getPriorityColor(task.priority), padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem', textTransform: 'uppercase' }}>{task.priority}</span>
-                    <span style={{ backgroundColor: catInfo.color, padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem' }}>{catInfo.label.split(' ')[0]}</span>
-                    {isOverdue && <span style={{ backgroundColor: '#C97B63', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem' }}>OVERDUE</span>}
-                    {isToday && !task.completed && <span style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem' }}>TODAY</span>}
+              <div
+                key={task.id}
+                className={`card flex items-start gap-4 transition-all ${isCompleted ? 'opacity-60' : ''} ${isOverdue ? 'border-red-500/50' : ''}`}
+              >
+                <button
+                  onClick={() => toggleComplete(task)}
+                  className={`w-6 h-6 rounded-full border-2 flex-shrink-0 mt-1 flex items-center justify-center transition-colors ${
+                    isCompleted 
+                      ? 'bg-green-500 border-green-500 text-white' 
+                      : 'border-gray-500 hover:border-primary-500'
+                  }`}
+                >
+                  {isCompleted && '✓'}
+                </button>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className={`font-semibold ${isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>
+                      {task.title}
+                    </h3>
+                    <span 
+                      className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ backgroundColor: `${catInfo.color}20`, color: catInfo.color }}
+                    >
+                      {catInfo.label}
+                    </span>
+                    <span 
+                      className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ backgroundColor: `${getPriorityColor(task.priority)}20`, color: getPriorityColor(task.priority) }}
+                    >
+                      {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                    </span>
                   </div>
-                  {task.description && <div style={{ fontSize: '0.875rem', color: '#999', marginTop: '0.25rem' }}>{task.description}</div>}
-                  <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>📅 Due: {new Date(task.dueDate).toLocaleDateString()}</div>
+                  {task.description && (
+                    <p className="text-gray-400 text-sm mt-1 line-clamp-2">{task.description}</p>
+                  )}
+                  <p className={`text-sm mt-1 ${getDueDateColor(task.due_date)}`}>
+                    📅 {formatDate(task.due_date)}
+                  </p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id) }} className="delete-btn" style={{ backgroundColor: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.25rem', padding: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}>🗑️</button>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => openEditForm(task)}
+                    className="p-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
             )
           })}
         </div>
+      )}
 
-        {showForm && (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-            <div style={{ backgroundColor: '#2a2a2a', borderRadius: '1rem', padding: '1.5rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflow: 'auto' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{editingTask ? '✏️ Edit Task' : '➕ Add New Task'}</h2>
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <input type="text" placeholder="Task Title *" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
-                <textarea placeholder="Description..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', resize: 'vertical' }} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                  <input type="date" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                  <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
-                    <option value="high">🔴 High</option>
-                    <option value="medium">🟡 Medium</option>
-                    <option value="low">🟢 Low</option>
-                  </select>
-                  <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
-                    {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+      {/* Add/Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">{editingTask ? 'Edit Task' : 'Add Task'}</h2>
+              <button onClick={resetForm} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Title *</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="Follow up with client..."
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="input-field w-full"
+                  rows={3}
+                  placeholder="Add details..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
+                    className="input-field w-full"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button onClick={resetForm} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
-                <button onClick={saveTask} disabled={!formData.title} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: '#D4AF37', color: '#000', cursor: 'pointer', fontWeight: '600', opacity: formData.title ? 1 : 0.5 }}>{editingTask ? 'Save Changes' : 'Add Task'}</button>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="input-field w-full"
+                >
+                  {categories.map(cat => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
+            <div className="p-6 border-t border-dark-border flex gap-3">
+              <button onClick={resetForm} className="btn-secondary flex-1">Cancel</button>
+              <button 
+                onClick={saveTask} 
+                className="btn-primary flex-1"
+                disabled={!formData.title.trim()}
+              >
+                {editingTask ? 'Save Changes' : 'Add Task'}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-
-      <style jsx>{`
-        .group:hover .delete-btn { opacity: 1 !important; }
-      `}</style>
+        </div>
+      )}
     </div>
   )
 }

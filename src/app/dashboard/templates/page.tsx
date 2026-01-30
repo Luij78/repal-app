@@ -1,183 +1,400 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
+import { createClient } from '@/lib/supabase/client'
 
-const sampleTemplates = [
-  { id: 1, name: 'New Lead Welcome', category: 'text', subject: '', content: 'Hi {name}! Thanks for reaching out about finding your perfect home. I\'m excited to help you on this journey! When would be a good time to chat about what you\'re looking for? I\'m available for a quick call today or tomorrow. - {agent}', tags: ['first-contact', 'buyer'] },
-  { id: 2, name: 'Showing Follow-Up', category: 'text', subject: '', content: 'Hi {name}! Great meeting you today at {property}. I loved showing you around! What were your thoughts on the home? Any questions I can answer? Let me know if you\'d like to schedule another viewing or see similar properties. - {agent}', tags: ['showing', 'follow-up'] },
-  { id: 3, name: 'Listing Presentation Confirmation', category: 'email', subject: 'Looking forward to meeting you!', content: 'Hi {name},\n\nI\'m excited to meet with you on {date} to discuss selling your home at {property}.\n\nI\'ll bring a comprehensive market analysis and marketing plan tailored specifically for your property.\n\nPlease have the following ready if possible:\n- Any recent repairs or upgrades\n- Original purchase documents\n- HOA information (if applicable)\n\nSee you soon!\n\nBest,\n{agent}', tags: ['listing', 'seller'] },
-  { id: 4, name: 'Price Reduction Discussion', category: 'email', subject: 'Market Update for {property}', content: 'Hi {name},\n\nI wanted to touch base about your listing at {property}. We\'ve had good showing activity, but the feedback suggests buyers are comparing to other homes in a slightly lower price range.\n\nBased on recent market data and comparable sales, I\'d like to discuss a strategic price adjustment to increase buyer interest.\n\nCan we schedule a quick call to review the numbers together?\n\nBest,\n{agent}', tags: ['listing', 'seller', 'price'] },
-  { id: 5, name: 'Offer Submitted', category: 'text', subject: '', content: 'Great news {name}! 🎉 I just submitted your offer on {property}. The listing agent confirmed receipt and said the sellers will review tonight. I\'ll call you as soon as I hear back. Fingers crossed! - {agent}', tags: ['offer', 'buyer'] },
-  { id: 6, name: 'Under Contract Celebration', category: 'email', subject: 'Congratulations - You\'re Under Contract! 🎉', content: 'Hi {name},\n\nWONDERFUL NEWS! Your offer on {property} has been accepted!\n\nHere\'s what happens next:\n\n📅 Important Dates:\n- Inspection: Schedule within 10 days\n- Appraisal: Lender will order this week\n- Closing: {closing_date}\n\n📋 Action Items:\n1. Send earnest money deposit to title company\n2. Schedule home inspection\n3. Forward homeowners insurance quote to lender\n\nI\'ll be with you every step of the way. Congratulations on this exciting milestone!\n\nBest,\n{agent}', tags: ['contract', 'buyer', 'milestone'] },
-  { id: 7, name: 'Closing Reminder', category: 'text', subject: '', content: 'Hi {name}! 🔑 Just a reminder - closing is scheduled for {date} at {time}. Don\'t forget to bring your ID and any remaining funds (cashier\'s check or wire). Can\'t wait to hand you those keys! - {agent}', tags: ['closing', 'reminder'] },
-  { id: 8, name: 'Anniversary Check-In', category: 'email', subject: 'Happy Home Anniversary! 🏠', content: 'Hi {name},\n\nHappy Home Anniversary! 🎉 Can you believe it\'s been a year since you got the keys to {property}?\n\nI hope you\'ve been enjoying your home and creating wonderful memories there.\n\nIf you ever need recommendations for home services, have questions about the market, or know anyone looking to buy or sell, I\'m always here to help!\n\nWishing you many more happy years in your home.\n\nWarmly,\n{agent}', tags: ['anniversary', 'past-client', 'nurture'] },
-  { id: 9, name: 'Market Update', category: 'email', subject: 'Your {area} Market Update', content: 'Hi {name},\n\nHere\'s what\'s happening in the {area} real estate market:\n\n📊 This Month\'s Stats:\n- Median Price: ${median_price}\n- Days on Market: {dom} days\n- Active Listings: {active}\n\n🏠 What This Means for You:\n{market_insight}\n\nInterested in knowing your home\'s current value? I\'d be happy to provide a complimentary market analysis.\n\nBest,\n{agent}', tags: ['market-update', 'nurture'] },
-  { id: 10, name: '55+ Community Info', category: 'email', subject: 'Active Adult Communities in Florida', content: 'Hi {name},\n\nThank you for your interest in 55+ communities! Here are some top options I recommend:\n\n🏌️ Golf Communities:\n- Solivita - Poinciana\n- Del Webb - Daytona Beach\n\n🎾 Active Lifestyle:\n- On Top of the World - Ocala\n- The Villages\n\nI specialize in helping buyers find the perfect active adult community. Would you like to schedule tours?\n\nBest,\n{agent}', tags: ['55+', 'buyer', 'community'] },
-  { id: 11, name: 'Investor Property Analysis', category: 'email', subject: 'Investment Property Analysis: {property}', content: 'Hi {name},\n\nHere\'s the analysis for {property}:\n\n💰 Financials:\n- Purchase Price: ${price}\n- Estimated Rent: ${rent}/month\n- Cap Rate: {cap_rate}%\n- Cash-on-Cash: {coc}%\n\n📊 Comparable Rents in Area: ${comp_rent}/month\n\nI can provide more detailed numbers including expenses, insurance estimates, and property management costs.\n\nWant to discuss this opportunity?\n\nBest,\n{agent}', tags: ['investor', 'analysis'] },
-  { id: 12, name: 'Referral Thank You', category: 'text', subject: '', content: 'Hi {name}! I just wanted to say THANK YOU for referring {referral_name} to me! 🙏 Referrals from clients like you mean the world to me. I promise to take great care of them! - {agent}', tags: ['referral', 'thank-you'] }
-]
+interface Template {
+  id: string
+  user_id: string
+  name: string
+  category: string
+  message: string
+  created_at: string
+}
 
 const categories = [
-  { value: 'text', label: '💬 Text/SMS', color: '#4A9B7F' },
-  { value: 'email', label: '📧 Email', color: '#6B8DD6' },
-  { value: 'script', label: '📞 Phone Script', color: '#9B59B6' }
+  { value: 'greeting', label: '👋 Greeting', color: '#3498DB' },
+  { value: 'followup', label: '📞 Follow-up', color: '#4A9B7F' },
+  { value: 'showing', label: '🏠 Showing', color: '#9B59B6' },
+  { value: 'offer', label: '📝 Offer', color: '#E67E22' },
+  { value: 'closing', label: '🔑 Closing', color: '#D4AF37' },
+  { value: 'marketing', label: '📢 Marketing', color: '#E74C3C' },
+  { value: 'thank-you', label: '🙏 Thank You', color: '#2ECC71' },
+  { value: 'other', label: '📋 Other', color: '#666' }
+]
+
+const defaultTemplates = [
+  { name: 'New Lead Intro', category: 'greeting', message: "Hi {name}! 👋 This is Luis Garcia with [Brokerage]. I saw you're interested in {area} properties. I'd love to help you find the perfect home! When would be a good time for a quick call?" },
+  { name: 'Showing Confirmation', category: 'showing', message: "Hi {name}! Just confirming our showing tomorrow at {time} for {address}. I'll meet you there! Let me know if anything changes. 🏠" },
+  { name: 'After Showing', category: 'followup', message: "Hi {name}! Thanks for touring {address} today! What did you think? I have a few more properties that might interest you. Let me know if you'd like to see them! 🏡" },
+  { name: 'Weekly Check-in', category: 'followup', message: "Hey {name}! Just checking in on your home search. Any changes to what you're looking for? New listings are coming up and I want to make sure you don't miss anything! 📱" },
+  { name: 'Offer Submitted', category: 'offer', message: "Great news {name}! 🎉 I just submitted your offer on {address}. I'll keep you posted as soon as I hear back from the seller's agent. Fingers crossed! 🤞" },
+  { name: 'Under Contract', category: 'closing', message: "🎊 Congratulations {name}! Your offer was ACCEPTED! We're officially under contract on {address}. I'll send over the timeline and next steps shortly. Exciting times ahead!" },
+  { name: 'Closing Day', category: 'closing', message: "It's closing day {name}! 🔑🎉 Can't wait to hand you the keys to your new home at {address}. See you at {time}!" },
+  { name: 'Thank You - Closed', category: 'thank-you', message: "Hi {name}! Congratulations again on your new home! 🏠 It was an absolute pleasure working with you. If you know anyone looking to buy or sell, I'd love to help them too! Here's to new beginnings! 🥂" },
+  { name: 'Market Update', category: 'marketing', message: "Hi {name}! Quick market update: {area} is seeing {trend}. Your home could be worth more than you think! Would you like a free home valuation? 📊" },
+  { name: 'Birthday', category: 'other', message: "Happy Birthday {name}! 🎂🎉 Wishing you an amazing day filled with joy. Hope this year brings you everything you're looking for! 🎈" }
 ]
 
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<any[]>([])
+  const { user } = useUser()
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [editingTemplate, setEditingTemplate] = useState<any>(null)
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
   const [filterCategory, setFilterCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
-    name: '', category: 'text', subject: '', content: '', tags: ''
+    name: '',
+    category: 'greeting',
+    message: ''
   })
 
+  const supabase = createClient()
+
   useEffect(() => {
-    const saved = localStorage.getItem('repal_templates')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      setTemplates(parsed.length > 0 ? parsed : sampleTemplates)
+    if (user) fetchTemplates()
+  }, [user])
+
+  const fetchTemplates = async () => {
+    if (!user) return
+
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('quick_reply_templates')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('category', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching templates:', error)
     } else {
-      setTemplates(sampleTemplates)
+      setTemplates(data || [])
     }
-  }, [])
-
-  useEffect(() => {
-    if (templates.length > 0) {
-      localStorage.setItem('repal_templates', JSON.stringify(templates))
-    }
-  }, [templates])
-
-  const getCategoryInfo = (cat: string) => categories.find(c => c.value === cat) || categories[0]
-
-  const filteredTemplates = templates.filter(t => {
-    const matchesCategory = filterCategory === 'all' || t.category === filterCategory
-    const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      t.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-    return matchesCategory && matchesSearch
-  })
-
-  const resetForm = () => {
-    setFormData({ name: '', category: 'text', subject: '', content: '', tags: '' })
-    setShowForm(false)
-    setEditingTemplate(null)
+    setLoading(false)
   }
 
-  const openEditForm = (template: any) => {
+  const getCategoryInfo = (cat: string) => categories.find(c => c.value === cat) || categories[categories.length - 1]
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      category: 'greeting',
+      message: ''
+    })
+    setEditingTemplate(null)
+    setShowForm(false)
+  }
+
+  const openEditForm = (template: Template) => {
     setEditingTemplate(template)
     setFormData({
-      name: template.name || '',
-      category: template.category || 'text',
-      subject: template.subject || '',
-      content: template.content || '',
-      tags: template.tags?.join(', ') || ''
+      name: template.name,
+      category: template.category,
+      message: template.message
     })
     setShowForm(true)
   }
 
-  const saveTemplate = () => {
+  const saveTemplate = async () => {
+    if (!user || !formData.name.trim() || !formData.message.trim()) return
+
     const templateData = {
-      ...formData,
-      tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
+      user_id: user.id,
+      name: formData.name,
+      category: formData.category,
+      message: formData.message
     }
+
     if (editingTemplate) {
-      setTemplates(templates.map(t => t.id === editingTemplate.id ? { ...templateData, id: editingTemplate.id } : t))
+      const { error } = await supabase
+        .from('quick_reply_templates')
+        .update(templateData)
+        .eq('id', editingTemplate.id)
+
+      if (error) {
+        console.error('Error updating template:', error)
+      } else {
+        setTemplates(templates.map(t => t.id === editingTemplate.id ? { ...t, ...templateData } : t))
+        resetForm()
+      }
     } else {
-      setTemplates([...templates, { ...templateData, id: Date.now() }])
+      const { data, error } = await supabase
+        .from('quick_reply_templates')
+        .insert(templateData)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding template:', error)
+      } else if (data) {
+        setTemplates([...templates, data])
+        resetForm()
+      }
     }
-    resetForm()
   }
 
-  const deleteTemplate = (id: number) => {
-    if (confirm('Delete this template?')) setTemplates(templates.filter(t => t.id !== id))
+  const deleteTemplate = async (templateId: string) => {
+    if (!confirm('Delete this template?')) return
+
+    const { error } = await supabase
+      .from('quick_reply_templates')
+      .delete()
+      .eq('id', templateId)
+
+    if (error) {
+      console.error('Error deleting template:', error)
+    } else {
+      setTemplates(templates.filter(t => t.id !== templateId))
+    }
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    alert('Copied to clipboard!')
+  const copyToClipboard = async (message: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(message)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
   }
+
+  const addDefaultTemplates = async () => {
+    if (!user) return
+    
+    const templatesWithUserId = defaultTemplates.map(t => ({
+      ...t,
+      user_id: user.id
+    }))
+
+    const { data, error } = await supabase
+      .from('quick_reply_templates')
+      .insert(templatesWithUserId)
+      .select()
+
+    if (error) {
+      console.error('Error adding default templates:', error)
+    } else if (data) {
+      setTemplates([...templates, ...data])
+    }
+  }
+
+  const filteredTemplates = templates.filter(template => {
+    const matchesCategory = filterCategory === 'all' || template.category === filterCategory
+    const matchesSearch = !searchTerm || 
+      template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      template.message.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesCategory && matchesSearch
+  })
+
+  // Group templates by category
+  const groupedTemplates = filteredTemplates.reduce((acc, template) => {
+    const cat = template.category
+    if (!acc[cat]) acc[cat] = []
+    acc[cat].push(template)
+    return acc
+  }, {} as Record<string, Template[]>)
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', color: '#fff', padding: '1rem' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link href="/dashboard" style={{ color: '#D4AF37', fontSize: '1.5rem' }}>←</Link>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>📝 Quick Reply Templates</h1>
-            <span style={{ backgroundColor: '#333', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem' }}>{templates.length} templates</span>
-          </div>
-          <button onClick={() => setShowForm(true)} style={{ backgroundColor: '#D4AF37', color: '#000', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: '600' }}>+ Create Template</button>
+    <div className="animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">⚡ Quick Replies</h1>
+          <p className="text-gray-400">One-tap message templates</p>
         </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <span>+</span> Add Template
+        </button>
+      </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <input type="text" placeholder="Search templates..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }} />
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #333', backgroundColor: '#2a2a2a', color: '#fff' }}>
-            <option value="all">All Types</option>
-            {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-          </select>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Search templates..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="input-field flex-1"
+        />
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="input-field"
+        >
+          <option value="all">All Categories</option>
+          {categories.map(cat => (
+            <option key={cat.value} value={cat.value}>{cat.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Templates List */}
+      {loading ? (
+        <div className="card text-center py-12">
+          <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-400">Loading templates...</p>
         </div>
-
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {filteredTemplates.map(template => {
-            const catInfo = getCategoryInfo(template.category)
+      ) : filteredTemplates.length === 0 ? (
+        <div className="card text-center py-12">
+          <span className="text-4xl mb-4 block">⚡</span>
+          <p className="text-gray-400 mb-4">
+            {searchTerm || filterCategory !== 'all' ? 'No templates match your search' : 'No templates yet'}
+          </p>
+          {!searchTerm && filterCategory === 'all' && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button onClick={() => setShowForm(true)} className="btn-secondary">
+                Create Your Own
+              </button>
+              <button onClick={addDefaultTemplates} className="btn-primary">
+                Add Starter Templates
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedTemplates).map(([category, categoryTemplates]) => {
+            const catInfo = getCategoryInfo(category)
             return (
-              <div key={template.id} onClick={() => openEditForm(template)} className="group" style={{ backgroundColor: '#2a2a2a', borderRadius: '0.75rem', padding: '1rem', border: '1px solid #333', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.borderColor = '#D4AF37'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'translateY(0)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: '600' }}>{template.name}</span>
-                      <span style={{ backgroundColor: catInfo.color, padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>{catInfo.label}</span>
-                    </div>
-                    {template.subject && <div style={{ fontSize: '0.875rem', color: '#D4AF37', marginBottom: '0.25rem' }}>Subject: {template.subject}</div>}
-                    <div style={{ fontSize: '0.875rem', color: '#999', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{template.content}</div>
-                    {template.tags?.length > 0 && (
-                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                        {template.tags.map((tag: string) => (
-                          <span key={tag} style={{ backgroundColor: '#333', padding: '0.125rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.625rem', color: '#999' }}>#{tag}</span>
-                        ))}
+              <div key={category}>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2" style={{ color: catInfo.color }}>
+                  {catInfo.label}
+                </h3>
+                <div className="grid gap-3">
+                  {categoryTemplates.map(template => (
+                    <div key={template.id} className="card group">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-white mb-2">{template.name}</h4>
+                          <p className="text-gray-400 text-sm whitespace-pre-wrap line-clamp-3">
+                            {template.message}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => copyToClipboard(template.message, template.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              copiedId === template.id 
+                                ? 'bg-green-500/20 text-green-400' 
+                                : 'bg-dark-border text-gray-400 hover:text-white'
+                            }`}
+                            title="Copy to clipboard"
+                          >
+                            {copiedId === template.id ? '✓' : '📋'}
+                          </button>
+                          <button
+                            onClick={() => openEditForm(template)}
+                            className="p-2 bg-dark-border text-gray-400 hover:text-white rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => deleteTemplate(template.id)}
+                            className="p-2 bg-dark-border text-gray-400 hover:text-red-400 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem' }}>
-                    <button onClick={(e) => { e.stopPropagation(); copyToClipboard(template.content) }} style={{ backgroundColor: '#4A9B7F', border: 'none', color: '#fff', cursor: 'pointer', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem' }}>📋 Copy</button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteTemplate(template.id) }} className="delete-btn" style={{ backgroundColor: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.25rem', padding: '0.5rem', opacity: 0, transition: 'opacity 0.2s' }}>🗑️</button>
-                  </div>
+                      {/* Quick Copy Button - always visible on mobile */}
+                      <button
+                        onClick={() => copyToClipboard(template.message, template.id)}
+                        className={`mt-3 w-full py-2 rounded-lg text-sm font-medium transition-colors sm:hidden ${
+                          copiedId === template.id 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-primary-500/20 text-primary-500'
+                        }`}
+                      >
+                        {copiedId === template.id ? '✓ Copied!' : '📋 Copy Message'}
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )
           })}
         </div>
+      )}
 
-        {showForm && (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-            <div style={{ backgroundColor: '#2a2a2a', borderRadius: '1rem', padding: '1.5rem', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{editingTemplate ? '✏️ Edit Template' : '➕ Create Template'}</h2>
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <input type="text" placeholder="Template Name *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', width: '100%' }} />
-                <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }}>
-                  {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-                </select>
-                {formData.category === 'email' && (
-                  <input type="text" placeholder="Subject Line" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
-                )}
-                <textarea placeholder="Template Content *&#10;&#10;Use variables like {name}, {property}, {agent}, {date}" value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} rows={8} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff', resize: 'vertical', fontFamily: 'inherit' }} />
-                <input type="text" placeholder="Tags (comma separated)" value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} style={{ padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: '#1a1a1a', color: '#fff' }} />
+      {/* Variables Help */}
+      {templates.length > 0 && (
+        <div className="mt-8 card bg-dark-bg/50">
+          <h4 className="text-white font-semibold mb-2">💡 Template Variables</h4>
+          <p className="text-gray-400 text-sm mb-3">
+            Use these placeholders in your templates and replace them when sending:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {['{name}', '{address}', '{area}', '{time}', '{date}', '{price}', '{trend}'].map(v => (
+              <code key={v} className="px-2 py-1 bg-dark-border rounded text-primary-500 text-sm">{v}</code>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 bg-dark-card">
+              <h2 className="text-xl font-bold text-white">{editingTemplate ? 'Edit Template' : 'Add Template'}</h2>
+              <button onClick={resetForm} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="Follow-up After Showing"
+                />
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button onClick={resetForm} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #444', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
-                <button onClick={saveTemplate} disabled={!formData.name || !formData.content} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', backgroundColor: '#D4AF37', color: '#000', cursor: 'pointer', fontWeight: '600', opacity: formData.name && formData.content ? 1 : 0.5 }}>{editingTemplate ? 'Save Changes' : 'Create Template'}</button>
+              
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="input-field w-full"
+                >
+                  {categories.map(cat => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Message *</label>
+                <textarea
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  className="input-field w-full"
+                  rows={6}
+                  placeholder="Hi {name}! Thanks for..."
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  Tip: Use {'{name}'}, {'{address}'}, {'{time}'} as placeholders
+                </p>
               </div>
             </div>
+            <div className="p-6 border-t border-dark-border flex gap-3 sticky bottom-0 bg-dark-card">
+              <button onClick={resetForm} className="btn-secondary flex-1">Cancel</button>
+              <button 
+                onClick={saveTemplate} 
+                className="btn-primary flex-1"
+                disabled={!formData.name.trim() || !formData.message.trim()}
+              >
+                {editingTemplate ? 'Save Changes' : 'Add Template'}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-
-      <style jsx>{`
-        .group:hover .delete-btn { opacity: 1 !important; }
-      `}</style>
+        </div>
+      )}
     </div>
   )
 }

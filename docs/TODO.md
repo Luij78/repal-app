@@ -43,6 +43,37 @@
 - [ ] Drip campaign automation
 - [ ] Template variables ({{name}}, {{property}})
 
+## Priority 2.5: AI Property Matcher ⭐ KILLER FEATURE
+
+*See full spec: `docs/FEATURE_SPEC_AI_PROPERTY_MATCHER.md`*
+
+### Phase 1 (MVP)
+- [ ] Extend leads table with criteria fields (budget, beds, baths, location, max_hoa, etc.)
+- [ ] Lead criteria capture form in Lead Manager
+- [ ] IDX/MLS API integration (RETS, Spark, or Bridge)
+- [ ] Daily property scan job (match leads to new listings)
+- [ ] Basic match notifications (email or in-app)
+- [ ] Draft message generation per match
+
+### Phase 2 (Smart Matching)
+- [ ] Auto-extract criteria from conversation/notes history
+- [ ] Learn from rejections (lead rejected $500 HOA → filter future matches)
+- [ ] Multi-language outreach drafts (English, Spanish, Portuguese)
+- [ ] One-click send integration (email/SMS)
+
+### Phase 3 (Advanced)
+- [ ] Predictive matching ("leads like this usually want...")
+- [ ] Market trend alerts for investor leads
+- [ ] ROI calculator integration for matched properties
+- [ ] Automated follow-up sequences per property sent
+
+### Dependencies
+- [ ] IDX/MLS feed access (contact local MLS for API access)
+- [ ] Email sending integration (SendGrid/Resend)
+- [ ] SMS integration (Twilio) for text outreach
+
+---
+
 ## Priority 3: Nice to Have
 
 ### Analytics Dashboard

@@ -1080,6 +1080,41 @@ export default function LeadsPage() {
                 </div>
               </div>
 
+              {/* === PRIORITY TRACK === */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Priority</label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, priority: p })}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
+                        formData.priority === p
+                          ? p <= 3
+                            ? 'bg-red-500 text-white ring-2 ring-red-400 ring-offset-2 ring-offset-dark-card'
+                            : p <= 6
+                            ? 'bg-amber-500 text-white ring-2 ring-amber-400 ring-offset-2 ring-offset-dark-card'
+                            : 'bg-gray-500 text-white ring-2 ring-gray-400 ring-offset-2 ring-offset-dark-card'
+                          : p <= 3
+                          ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                          : p <= 6
+                          ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                          : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <p className={`text-xs mt-2 ${
+                  formData.priority <= 3 ? 'text-red-400' : 
+                  formData.priority <= 6 ? 'text-amber-400' : 'text-gray-400'
+                }`}>
+                  {priorityDescriptions[formData.priority]}
+                </p>
+              </div>
+
               {/* === DIVIDER === */}
               <div className="border-t border-dark-border"></div>
 

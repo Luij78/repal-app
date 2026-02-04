@@ -1222,24 +1222,24 @@ export default function LeadsPage() {
               {/* Priority Track */}
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Priority</label>
-                <div className="flex items-center gap-1">
+                <div className="flex gap-1">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((p) => (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setFormData({ ...formData, priority: p })}
-                      className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
+                      className={`flex-1 h-9 rounded-md text-xs font-bold transition-all flex items-center justify-center ${
                         formData.priority === p
                           ? p <= 3
-                            ? 'bg-red-500 text-white ring-2 ring-red-400 ring-offset-2 ring-offset-dark-card'
+                            ? 'bg-red-500/25 text-red-400 border-2 border-red-500'
                             : p <= 6
-                            ? 'bg-amber-500 text-white ring-2 ring-amber-400 ring-offset-2 ring-offset-dark-card'
-                            : 'bg-gray-500 text-white ring-2 ring-gray-400 ring-offset-2 ring-offset-dark-card'
+                            ? 'bg-amber-500/25 text-amber-400 border-2 border-amber-500'
+                            : 'bg-gray-500/25 text-gray-400 border-2 border-gray-500'
                           : p <= 3
-                          ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                          ? 'bg-red-500/10 text-red-400/60 border border-white/5 hover:bg-red-500/20'
                           : p <= 6
-                          ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
-                          : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                          ? 'bg-amber-500/10 text-amber-400/60 border border-white/5 hover:bg-amber-500/20'
+                          : 'bg-gray-500/10 text-gray-400/60 border border-white/5 hover:bg-gray-500/20'
                       }`}
                     >
                       {p}
@@ -1270,7 +1270,7 @@ export default function LeadsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Follow-up Date</label>
+                  <label className="block text-gray-400 text-sm mb-1">Follow-up</label>
                   <input
                     type="date"
                     value={formData.follow_up_date}
@@ -1285,21 +1285,29 @@ export default function LeadsPage() {
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Budget Min</label>
                   <input
-                    type="number"
-                    value={formData.budget_min}
-                    onChange={(e) => setFormData({ ...formData, budget_min: e.target.value })}
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.budget_min ? `$${Number(formData.budget_min).toLocaleString()}` : ''}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, '')
+                      setFormData({ ...formData, budget_min: raw })
+                    }}
                     className="input-field w-full"
-                    placeholder="250000"
+                    placeholder="$250,000"
                   />
                 </div>
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Budget Max</label>
                   <input
-                    type="number"
-                    value={formData.budget_max}
-                    onChange={(e) => setFormData({ ...formData, budget_max: e.target.value })}
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.budget_max ? `$${Number(formData.budget_max).toLocaleString()}` : ''}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, '')
+                      setFormData({ ...formData, budget_max: raw })
+                    }}
                     className="input-field w-full"
-                    placeholder="400000"
+                    placeholder="$400,000"
                   />
                 </div>
               </div>

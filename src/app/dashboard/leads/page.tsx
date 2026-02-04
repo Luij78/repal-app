@@ -195,6 +195,11 @@ export default function LeadsPage() {
   const editNotesRef = useRef<HTMLTextAreaElement>(null)
   const editModalRef = useRef<HTMLDivElement>(null)
   
+  // Timeline notes state
+  const [leadNotes, setLeadNotes] = useState<any[]>([])
+  const [newNoteContent, setNewNoteContent] = useState('')
+  const [loadingNotes, setLoadingNotes] = useState(false)
+  
   const { isListening, transcript, isSupported, toggleListening, setTranscript } = useSpeechToText()
   
   const [formData, setFormData] = useState({
@@ -223,6 +228,63 @@ export default function LeadsPage() {
   })
 
   const supabase = createClient()
+
+  // Fetch lead notes from lead_notes table
+  const fetchLeadNotes = async (leadId: string) => {
+    if (!user) return
+    setLoadingNotes(true)
+    const { data, error } = await supabase
+      .from('lead_notes')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching lead notes:', error)
+      setLeadNotes([])
+    } else {
+      setLeadNotes(data || [])
+    }
+    setLoadingNotes(false)
+  }
+
+  // Save a new lead note
+  const saveLeadNote = async () => {
+    if (!user || !selectedLead || !newNoteContent.trim()) return
+    
+    const { data, error } = await supabase
+      .from('lead_notes')
+      .insert({
+        lead_id: selectedLead.id,
+        user_id: user.id,
+        content: newNoteContent.trim()
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('Error saving note:', error)
+      setImportStatus('Failed to save note')
+      setTimeout(() => setImportStatus(''), 2000)
+    } else {
+      setLeadNotes([data, ...leadNotes])
+      setNewNoteContent('')
+      setImportStatus('Note saved!')
+      setTimeout(() => setImportStatus(''), 2000)
+    }
+  }
+
+  // Fetch notes when selectedLead changes
+  useEffect(() => {
+    if (selectedLead) {
+      fetchLeadNotes(selectedLead.id)
+      setInlineNotes(selectedLead.notes || '')
+      setInlinePriority(selectedLead.priority || 5)
+    } else {
+      setLeadNotes([])
+      setNewNoteContent('')
+    }
+  }, [selectedLead])
 
   // Handle speech-to-text transcript
   useEffect(() => {
@@ -771,8 +833,6 @@ export default function LeadsPage() {
                 key={lead.id}
                 onClick={() => {
                   setSelectedLead(lead)
-                  setInlineNotes(lead.notes || '')
-                  setInlinePriority(lead.priority || 5)
                 }}
                 className={`relative card transition-all cursor-pointer hover:border-primary-500/30 pr-12 ${isExpanded ? 'border-primary-500/50' : ''}`}
               >
@@ -1591,34 +1651,44 @@ export default function LeadsPage() {
 
                   {/* Notes Timeline */}
                   <div className="border-t border-dark-border pt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-gray-400">Notes</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-gray-400">Recent Notes</h3>
                       <div className="flex gap-2">
                         <button
                           onClick={() => generateAiFollowup(selectedLead)}
                           disabled={aiLoading !== null}
-                          className="px-2 py-1 text-xs bg-purple-500/10 text-purple-400 rounded-md hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                          className="px-2 py-1 text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-md hover:bg-purple-500/20 transition-colors disabled:opacity-50"
                         >
-                          {aiLoading === 'followup' ? '⏳' : '✨'} AI Suggest
+                          {aiLoading === 'followup' ? '⏳' : '✨'} AI Follow-up
                         </button>
                         <button
-                          onClick={() => {
-                            const now = new Date()
-                            const timestamp = `\n\n[${now.toLocaleDateString('en-US')} ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}] `
-                            setInlineNotes(prev => prev ? prev.trimEnd() + timestamp : timestamp.trim())
-                          }}
-                          className="px-2 py-1 text-xs bg-teal-500/10 text-teal-400 rounded-md hover:bg-teal-500/20 transition-colors"
+                          onClick={() => generateAiRewrite(selectedLead)}
+                          disabled={aiLoading !== null}
+                          className="px-2 py-1 text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-md hover:bg-purple-500/20 transition-colors disabled:opacity-50"
                         >
-                          + Add Note
+                          {aiLoading === 'rewrite' ? '⏳' : '🔄'} AI Rewrite
                         </button>
+                        {isSupported && (
+                          <button
+                            type="button"
+                            onClick={toggleListening}
+                            className={`px-2 py-1 text-xs rounded-md border transition-all ${
+                              isListening 
+                                ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' 
+                                : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                            }`}
+                          >
+                            {isListening ? '🎤 Recording...' : '🎤 Voice'}
+                          </button>
+                        )}
                       </div>
                     </div>
 
                     {/* AI Response */}
                     {aiResponse && (
-                      <div className="p-3 mb-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                      <div className="p-3 mb-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-purple-400 text-xs font-semibold">AI Suggestion</p>
+                          <p className="text-purple-400 text-xs font-semibold">AI Response</p>
                           <button onClick={() => setAiResponse(null)} className="text-gray-400 hover:text-white text-xs">✕</button>
                         </div>
                         <p className="text-white text-sm whitespace-pre-wrap mb-2">{aiResponse}</p>
@@ -1635,39 +1705,82 @@ export default function LeadsPage() {
                           </button>
                           <button
                             onClick={() => {
-                              const now = new Date()
-                              const timestamp = `[${now.toLocaleDateString('en-US')} @ ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}] `
-                              setInlineNotes(prev => prev ? prev.trimEnd() + '\n\n' + timestamp + aiResponse : timestamp + aiResponse)
+                              setNewNoteContent(aiResponse)
                               setAiResponse(null)
                             }}
                             className="flex-1 px-2 py-1.5 bg-teal-500/20 text-teal-400 rounded text-xs hover:bg-teal-500/30"
                           >
-                            Add to Notes
+                            Use as Note
                           </button>
                         </div>
                       </div>
                     )}
 
-                    {/* Notes display / edit */}
-                    <textarea
-                      value={inlineNotes}
-                      onChange={(e) => setInlineNotes(e.target.value)}
-                      className="input-field w-full h-32 resize-none text-sm"
-                      placeholder="Add notes about this contact..."
-                    />
-                    {isSupported && (
+                    {/* Timeline */}
+                    <div className="relative pl-5 mb-4">
+                      {/* Timeline line */}
+                      <div className="absolute left-1 top-2 bottom-2 w-px bg-white/10"></div>
+                      
+                      {loadingNotes ? (
+                        <div className="text-center py-4 text-gray-500 text-sm">Loading notes...</div>
+                      ) : leadNotes.length === 0 ? (
+                        <div className="text-center py-4 text-gray-500 text-sm">No notes yet. Add one below!</div>
+                      ) : (
+                        <>
+                          {leadNotes.map((note, index) => {
+                            const noteDate = new Date(note.created_at)
+                            const now = new Date()
+                            const daysDiff = Math.floor((now.getTime() - noteDate.getTime()) / (1000 * 60 * 60 * 24))
+                            const isRecent = daysDiff <= 7
+                            
+                            return (
+                              <div key={note.id} className="relative pb-5 last:pb-0">
+                                {/* Timeline dot */}
+                                <div className={`absolute -left-5 top-1.5 w-2.5 h-2.5 rounded-full border-2 ${
+                                  isRecent 
+                                    ? 'bg-amber-500 border-amber-500' 
+                                    : 'bg-gray-700 border-gray-600'
+                                }`}></div>
+                                
+                                {/* Date */}
+                                <div className="text-xs text-gray-600 mb-1">
+                                  {noteDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {noteDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                </div>
+                                
+                                {/* Note content card */}
+                                <div className="bg-white/[0.03] border border-white/[0.05] rounded-lg px-3 py-2.5">
+                                  <p className="text-sm text-gray-300 leading-relaxed">{note.content}</p>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Add new note */}
+                    <div className="flex gap-2 mt-4">
+                      <textarea
+                        value={newNoteContent}
+                        onChange={(e) => setNewNoteContent(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                            saveLeadNote()
+                          }
+                        }}
+                        className="flex-1 bg-white/[0.04] border border-white/10 rounded-lg p-3 text-white text-base resize-none focus:outline-none focus:border-amber-500 transition-colors"
+                        placeholder="Add a note..."
+                        rows={2}
+                      />
                       <button
-                        type="button"
-                        onClick={toggleListening}
-                        className={`mt-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
-                          isListening 
-                            ? 'bg-red-500/20 text-red-400 border border-red-500/50 animate-pulse' 
-                            : 'bg-dark-border text-gray-400 hover:text-white'
-                        }`}
+                        onClick={saveLeadNote}
+                        disabled={!newNoteContent.trim()}
+                        className="bg-amber-500 text-black font-semibold rounded-lg px-4 h-11 self-end hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isListening ? '🔴 Stop Recording' : '🎤 Voice Note'}
+                        Save
                       </button>
-                    )}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1">Tip: Press ⌘+Enter to save quickly</p>
                   </div>
                 </div>
               )}
@@ -1699,31 +1812,10 @@ export default function LeadsPage() {
               </button>
               <div className="flex-1" />
               <button 
-                onClick={() => { setSelectedLead(null); setAiResponse(null); setInlineNotes(''); setInlinePriority(5); setViewTab('overview'); }} 
+                onClick={() => { setSelectedLead(null); setAiResponse(null); setInlineNotes(''); setInlinePriority(5); setViewTab('overview'); setLeadNotes([]); setNewNoteContent(''); }} 
                 className="px-4 py-2.5 bg-white/5 text-gray-300 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
               >
-                Cancel
-              </button>
-              <button 
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from('leads')
-                    .update({ notes: inlineNotes, priority: inlinePriority })
-                    .eq('id', selectedLead.id)
-                  if (!error) {
-                    setLeads(leads.map(l => l.id === selectedLead.id ? { ...l, notes: inlineNotes, priority: inlinePriority } : l))
-                    setSelectedLead(null)
-                    setAiResponse(null)
-                    setInlineNotes('')
-                    setInlinePriority(5)
-                    setViewTab('overview')
-                    setImportStatus('Saved!')
-                    setTimeout(() => setImportStatus(''), 2000)
-                  }
-                }}
-                className="px-4 py-2.5 bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-600 transition-colors text-sm font-semibold"
-              >
-                💾 Save
+                Close
               </button>
             </div>
           </div>

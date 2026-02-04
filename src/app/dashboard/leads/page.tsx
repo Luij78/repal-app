@@ -1197,82 +1197,31 @@ export default function LeadsPage() {
               {/* === STATUS & PRIORITY SECTION === */}
               <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Status & Priority</div>
               
-              {/* Status Pills */}
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Status</label>
-                <div className="flex flex-wrap gap-2">
-                  {/* If a legacy status is present, keep it visible/selectable */}
-                  {formData.status && !statusOptions.some(s => s.value === formData.status) && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, status: formData.status as Lead['status'] })}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                        statusColors[formData.status]
-                          ? `border-2 ${statusColors[formData.status]}`
-                          : 'border-2 bg-white/[0.04] text-gray-200 border-white/20'
-                      }`}
-                      aria-pressed="true"
-                    >
-                      {(formData.status || '').toString().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                    </button>
-                  )}
-                  {statusOptions.map((opt) => {
-                    const selected = formData.status === opt.value
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, status: opt.value as Lead['status'] })}
-                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                          selected
-                            ? `border-2 ${opt.color}`
-                            : 'bg-white/[0.03] text-gray-400 border-white/10 hover:border-white/20'
-                        }`}
-                        aria-pressed={selected}
-                      >
-                        {opt.value === 'hot' ? '🔥 ' : ''}
-                        {opt.label}
-                      </button>
-                    )
-                  })}
+              {/* Status / Intent / Stage Row */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Lead['status'] })}
+                    className="input-field w-full"
+                  >
+                    {statusOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.value === 'hot' ? '🔥 ' : ''}{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-
-              {/* Intent / Stage Row */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Intent</label>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {formData.intent && !intentOptions.some(i => i.value === formData.intent) && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, intent: formData.intent, type: formData.intent as Lead['type'] })}
-                        className="px-4 py-2 rounded-full text-sm font-medium border-2 bg-white/[0.04] text-gray-200 border-white/20"
-                        aria-pressed="true"
-                      >
-                        {(typeLabels[formData.intent]?.icon ? `${typeLabels[formData.intent].icon} ` : '')}
-                        {(typeLabels[formData.intent]?.label ?? formData.intent).toString()}
-                      </button>
-                    )}
-                    {intentOptions.map((opt) => {
-                      const selected = formData.intent === opt.value
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, intent: opt.value, type: opt.value as Lead['type'] })}
-                          className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                            selected
-                              ? 'border-2 bg-primary-500/15 text-primary-500 border-primary-500/50'
-                              : 'bg-white/[0.03] text-gray-400 border-white/10 hover:border-white/20'
-                          }`}
-                          aria-pressed={selected}
-                        >
-                          {opt.icon} {opt.label}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <select
+                    value={formData.intent}
+                    onChange={(e) => setFormData({ ...formData, intent: e.target.value, type: e.target.value as Lead['type'] })}
+                    className="input-field w-full"
+                  >
+                    {intentOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.icon} {opt.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Stage <span className="text-red-400">*</span></label>

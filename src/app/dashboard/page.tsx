@@ -304,12 +304,12 @@ export default function DashboardPage() {
             {insights.length > 0 ? (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-gray-400 flex items-center gap-2"><span>💡</span> AI Suggestions</h3>
-                <div className="grid gap-2">
+                <div className="flex flex-col gap-2">
                   {insights.map((insight, index) => (
-                    <Link key={index} href={insight.link || '#'} onClick={(e) => e.stopPropagation()} className={`flex items-start gap-3 p-3 rounded-lg transition-all hover:scale-[1.01] ${insight.type === 'alert' ? 'bg-red-500/10 border border-red-500/30 hover:border-red-500/50' : insight.type === 'priority' ? 'bg-blue-500/10 border border-blue-500/30 hover:border-blue-500/50' : insight.type === 'opportunity' ? 'bg-green-500/10 border border-green-500/30 hover:border-green-500/50' : 'bg-dark-bg/50 border border-dark-border hover:border-primary-500/50'}`}>
-                      <span className="text-xl">{insight.icon}</span>
+                    <Link key={index} href={insight.link || '#'} onClick={(e) => e.stopPropagation()} className={`flex items-center gap-3 p-3 rounded-lg transition-all w-full ${insight.type === 'alert' ? 'bg-red-500/10 border border-red-500/30 hover:border-red-500/50' : insight.type === 'priority' ? 'bg-blue-500/10 border border-blue-500/30 hover:border-blue-500/50' : insight.type === 'opportunity' ? 'bg-green-500/10 border border-green-500/30 hover:border-green-500/50' : 'bg-dark-bg/50 border border-dark-border hover:border-primary-500/50'}`}>
+                      <span className="text-xl flex-shrink-0">{insight.icon}</span>
                       <div className="flex-1 min-w-0"><p className="font-medium text-white text-sm">{insight.title}</p><p className="text-xs text-gray-400 truncate">{insight.description}</p></div>
-                      {insight.action && <span className="text-xs text-primary-400 whitespace-nowrap">{insight.action} →</span>}
+                      {insight.action && <span className="text-xs text-primary-400 whitespace-nowrap flex-shrink-0">{insight.action} →</span>}
                     </Link>
                   ))}
                 </div>

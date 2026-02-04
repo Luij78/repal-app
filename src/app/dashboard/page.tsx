@@ -277,15 +277,20 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 pb-8">
       <div className="card bg-gradient-to-br from-dark-card to-dark-bg border-primary-500/30 cursor-pointer" onClick={() => setDigestExpanded(!digestExpanded)}>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center"><span className="text-2xl">🤖</span></div>
-            <div><h2 className="font-playfair text-lg text-primary-400">AI Daily Digest</h2><p className="text-sm text-gray-400">{getGreeting()}, Agent! Here's your daily briefing.</p></div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary-500/20 flex items-center justify-center flex-shrink-0"><span className="text-xl md:text-2xl">🤖</span></div>
+              <div className="min-w-0">
+                <h2 className="font-playfair text-base md:text-lg text-primary-400">AI Daily Digest</h2>
+                <p className="text-xs md:text-sm text-gray-400 truncate">{getGreeting()}, Agent! Here&apos;s your daily briefing.</p>
+              </div>
+            </div>
+            <span className="text-gray-400 flex-shrink-0 ml-2">{digestExpanded ? '▲' : '▼'}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/alerts" onClick={(e) => e.stopPropagation()} className="relative flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-2 py-1 rounded-full transition-all"><span>🔔</span><span className="text-primary-400">AI Alerts</span>{urgentAlerts > 0 && (<span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{urgentAlerts}</span>)}</Link>
-            <Link href="/dashboard/smart-tasks" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 px-2 py-1 rounded-full transition-all"><span>🧠</span><span className="text-green-400">Smart Tasks</span></Link>
-            <span className="text-gray-400">{digestExpanded ? '▲' : '▼'}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href="/dashboard/alerts" onClick={(e) => e.stopPropagation()} className="relative flex items-center gap-1 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-2.5 py-1.5 rounded-full transition-all"><span>🔔</span><span className="text-primary-400">AI Alerts</span>{urgentAlerts > 0 && (<span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{urgentAlerts}</span>)}</Link>
+            <Link href="/dashboard/smart-tasks" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 px-2.5 py-1.5 rounded-full transition-all"><span>🧠</span><span className="text-green-400">Smart Tasks</span></Link>
           </div>
         </div>
         {digestExpanded && (

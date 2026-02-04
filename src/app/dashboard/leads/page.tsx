@@ -199,6 +199,9 @@ export default function LeadsPage() {
   const [leadNotes, setLeadNotes] = useState<any[]>([])
   const [newNoteContent, setNewNoteContent] = useState('')
   const [loadingNotes, setLoadingNotes] = useState(false)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editingNoteContent, setEditingNoteContent] = useState('')
+  const [noteMenuOpen, setNoteMenuOpen] = useState<string | null>(null)
   
   const { isListening, transcript, isSupported, toggleListening, setTranscript } = useSpeechToText()
   
@@ -272,6 +275,33 @@ export default function LeadsPage() {
       setImportStatus('Note saved!')
       setTimeout(() => setImportStatus(''), 2000)
     }
+  }
+
+  const updateLeadNote = async (noteId: string, content: string) => {
+    const { error } = await supabase
+      .from('lead_notes')
+      .update({ content: content.trim(), updated_at: new Date().toISOString() })
+      .eq('id', noteId)
+    if (error) {
+      console.error('Error updating note:', error)
+    } else {
+      setLeadNotes(leadNotes.map(n => n.id === noteId ? { ...n, content: content.trim() } : n))
+    }
+    setEditingNoteId(null)
+    setEditingNoteContent('')
+  }
+
+  const deleteLeadNote = async (noteId: string) => {
+    const { error } = await supabase
+      .from('lead_notes')
+      .delete()
+      .eq('id', noteId)
+    if (error) {
+      console.error('Error deleting note:', error)
+    } else {
+      setLeadNotes(leadNotes.filter(n => n.id !== noteId))
+    }
+    setNoteMenuOpen(null)
   }
 
   // Fetch notes when selectedLead changes
@@ -1748,8 +1778,61 @@ export default function LeadsPage() {
                                 </div>
                                 
                                 {/* Note content card */}
-                                <div className="bg-white/[0.03] border border-white/[0.05] rounded-lg px-3 py-2.5">
-                                  <p className="text-sm text-gray-300 leading-relaxed">{note.content}</p>
+                                <div className="bg-white/[0.03] border border-white/[0.05] rounded-lg px-3 py-2.5 relative group">
+                                  {editingNoteId === note.id ? (
+                                    <div>
+                                      <textarea
+                                        value={editingNoteContent}
+                                        onChange={(e) => setEditingNoteContent(e.target.value)}
+                                        className="w-full bg-white/[0.04] border border-white/10 rounded-lg p-2 text-sm text-white resize-none focus:outline-none focus:border-amber-500"
+                                        rows={3}
+                                        autoFocus
+                                      />
+                                      <div className="flex gap-2 mt-2">
+                                        <button
+                                          onClick={() => updateLeadNote(note.id, editingNoteContent)}
+                                          className="px-3 py-1 bg-amber-500 text-black text-xs font-semibold rounded-md hover:bg-amber-600"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => { setEditingNoteId(null); setEditingNoteContent(''); }}
+                                          className="px-3 py-1 bg-white/5 text-gray-400 text-xs rounded-md hover:bg-white/10"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <p className="text-sm text-gray-300 leading-relaxed pr-6">{note.content}</p>
+                                      {/* 3-dot menu */}
+                                      <div className="absolute top-2 right-2">
+                                        <button
+                                          onClick={() => setNoteMenuOpen(noteMenuOpen === note.id ? null : note.id)}
+                                          className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-300 hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
+                                        >
+                                          ⋮
+                                        </button>
+                                        {noteMenuOpen === note.id && (
+                                          <div className="absolute right-0 top-7 bg-dark-card border border-white/10 rounded-lg shadow-xl z-10 overflow-hidden min-w-[100px]">
+                                            <button
+                                              onClick={() => { setEditingNoteId(note.id); setEditingNoteContent(note.content); setNoteMenuOpen(null); }}
+                                              className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-white/10 transition-colors"
+                                            >
+                                              ✏️ Edit
+                                            </button>
+                                            <button
+                                              onClick={() => deleteLeadNote(note.id)}
+                                              className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                                            >
+                                              🗑️ Delete
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             )

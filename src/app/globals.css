@@ -324,3 +324,52 @@ select.input-field:focus {
     margin-top: 0;
   }
 }
+
+/* Centered Slide-up Modal */
+.modal-panel-overlay {
+  @apply fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-panel {
+  @apply w-full max-w-2xl bg-dark-card border border-dark-border flex flex-col;
+  max-height: 100%;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Mobile: full screen */
+@media (max-width: 768px) {
+  .modal-panel-overlay {
+    @apply items-stretch;
+  }
+  .modal-panel {
+    @apply max-w-full rounded-none;
+  }
+}
+
+/* Desktop: centered with rounded corners */
+@media (min-width: 769px) {
+  .modal-panel-overlay {
+    @apply items-start pt-12;
+  }
+  .modal-panel {
+    @apply rounded-2xl;
+    max-height: calc(100vh - 6rem);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Avatar with initials */
+.avatar-initials {
+  @apply flex items-center justify-center font-bold text-white rounded-xl;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}

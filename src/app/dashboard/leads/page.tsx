@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
-import type { Lead } from '@/types/database'
+import type { Lead, Task } from '@/types/database'
 
 const priorityDescriptions: Record<number, string> = {
   1: '🔥 Buying in 1-2 months',
@@ -384,16 +384,23 @@ export default function LeadsPage() {
   const [inlineNotes, setInlineNotes] = useState('')
   const [inlinePriority, setInlinePriority] = useState(5)
   const notesScrollRef = useRef<HTMLDivElement>(null)
-  const editNotesRef = useRef<HTMLTextAreaElement>(null)
-  const editModalRef = useRef<HTMLDivElement>(null)
-  
-  // Timeline notes state
-  const [leadNotes, setLeadNotes] = useState<any[]>([])
-  const [newNoteContent, setNewNoteContent] = useState('')
-  const [loadingNotes, setLoadingNotes] = useState(false)
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
-  const [editingNoteContent, setEditingNoteContent] = useState('')
-  const [noteMenuOpen, setNoteMenuOpen] = useState<string | null>(null)
+    const editNotesRef = useRef<HTMLTextAreaElement>(null)
+    const editModalRef = useRef<HTMLDivElement>(null)
+    
+    // Timeline notes state
+    const [leadNotes, setLeadNotes] = useState<any[]>([])
+    const [newNoteContent, setNewNoteContent] = useState('')
+    const [loadingNotes, setLoadingNotes] = useState(false)
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+    const [editingNoteContent, setEditingNoteContent] = useState('')
+    const [noteMenuOpen, setNoteMenuOpen] = useState<string | null>(null)
+
+    const [leadTasks, setLeadTasks] = useState<Task[]>([])
+    const [showAddTask, setShowAddTask] = useState(false)
+    const [newTaskTitle, setNewTaskTitle] = useState('')
+    const [newTaskDueDate, setNewTaskDueDate] = useState('')
+    const [newTaskCategory, setNewTaskCategory] = useState('call')
+    const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium')
   
   const { isListening, transcript, isSupported, toggleListening, setTranscript } = useSpeechToText()
   
@@ -483,30 +490,71 @@ export default function LeadsPage() {
     setEditingNoteContent('')
   }
 
-  const deleteLeadNote = async (noteId: string) => {
-    const { error } = await supabase
-      .from('lead_notes')
-      .delete()
+    const deleteLeadNote = async (noteId: string) => {
+      const { error } = await supabase
+        .from('lead_notes')
+        .delete()
       .eq('id', noteId)
     if (error) {
       console.error('Error deleting note:', error)
     } else {
       setLeadNotes(leadNotes.filter(n => n.id !== noteId))
     }
-    setNoteMenuOpen(null)
-  }
-
-  // Fetch notes when selectedLead changes
-  useEffect(() => {
-    if (selectedLead) {
-      fetchLeadNotes(selectedLead.id)
-      setInlineNotes(selectedLead.notes || '')
-      setInlinePriority(selectedLead.priority || 5)
-    } else {
-      setLeadNotes([])
-      setNewNoteContent('')
+      setNoteMenuOpen(null)
     }
-  }, [selectedLead])
+
+    const addLeadTask = async () => {
+      if (!newTaskTitle.trim() || !user || !selectedLead) return
+      const supabase = createClient()
+      const { data, error } = await supabase.from('tasks').insert({
+        user_id: user.id,
+        lead_id: selectedLead.id,
+        title: newTaskTitle.trim(),
+        due_date: newTaskDueDate || null,
+        category: newTaskCategory,
+        priority: newTaskPriority,
+        status: 'pending'
+      }).select().single()
+      if (!error && data) {
+        setLeadTasks(prev => [...prev, data])
+        setNewTaskTitle('')
+        setNewTaskDueDate('')
+        setShowAddTask(false)
+      }
+    }
+
+    const toggleTaskComplete = async (taskId: string, currentStatus: string) => {
+      const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+      const supabase = createClient()
+      await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
+      setLeadTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t))
+    }
+
+    // Fetch notes when selectedLead changes
+    useEffect(() => {
+      if (selectedLead) {
+        fetchLeadNotes(selectedLead.id)
+        ;(async () => {
+          if (!user) return
+          const { data: taskData } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('lead_id', selectedLead.id)
+            .order('status', { ascending: true })
+            .order('due_date', { ascending: true })
+          setLeadTasks(taskData || [])
+        })()
+        setInlineNotes(selectedLead.notes || '')
+        setInlinePriority(selectedLead.priority || 5)
+      } else {
+        setLeadNotes([])
+        setNewNoteContent('')
+        setLeadTasks([])
+        setShowAddTask(false)
+        setNewTaskTitle('')
+      }
+    }, [selectedLead])
 
   // Handle speech-to-text transcript
   useEffect(() => {
@@ -1976,21 +2024,135 @@ export default function LeadsPage() {
                 </div>
               )}
 
-              {viewTab === 'activity' && (
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-4xl mb-2">📋</p>
-                  <p>Activity tracking coming soon</p>
-                  <p className="text-sm mt-1">Call logs, emails, and interactions will appear here</p>
-                </div>
-              )}
+                {viewTab === 'activity' && (
+                  <div className="p-4 md:p-5 overflow-y-auto flex-1">
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                      <div className="bg-white/[0.03] rounded-lg p-3">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Last Contact</p>
+                        <p className="text-sm text-white">{leadNotes[0]?.created_at ? formatDate(leadNotes[0].created_at) : 'No contact yet'}</p>
+                      </div>
+                      <div className="bg-white/[0.03] rounded-lg p-3">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Total Notes</p>
+                        <p className="text-sm text-white">{leadNotes.length}</p>
+                      </div>
+                      <div className="bg-white/[0.03] rounded-lg p-3">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Created</p>
+                        <p className="text-sm text-white">{formatDate(selectedLead.created_at)}</p>
+                      </div>
+                      <div className="bg-white/[0.03] rounded-lg p-3">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Last Updated</p>
+                        <p className="text-sm text-white">{formatDate(selectedLead.updated_at)}</p>
+                      </div>
+                    </div>
 
-              {viewTab === 'tasks' && (
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-4xl mb-2">✅</p>
-                  <p>Tasks coming soon</p>
-                  <p className="text-sm mt-1">Schedule follow-ups and reminders</p>
-                </div>
-              )}
+                    {leadNotes.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="text-sm">No activity recorded yet</p>
+                      </div>
+                    ) : (
+                      <div className="relative pl-6">
+                        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/10" />
+                        {leadNotes.map((note, i) => (
+                          <div key={note.id} className="relative pb-6 last:pb-0">
+                            <div className={`absolute left-[-17px] top-1 w-[10px] h-[10px] rounded-full border-2 ${
+                              i === 0 ? 'bg-amber-500 border-amber-500' : 'bg-transparent border-white/20'
+                            }`} />
+                            <p className="text-[11px] text-gray-500 mb-1">{formatDate(note.created_at)}</p>
+                            <p className="text-[13px] text-gray-300 leading-relaxed">{note.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {viewTab === 'tasks' && (
+                  <div className="p-4 md:p-5 overflow-y-auto flex-1">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-sm font-semibold text-gray-400">Tasks for {selectedLead.name.split(' ')[0]}</h3>
+                      <button 
+                        onClick={() => setShowAddTask(!showAddTask)}
+                        className="px-3 py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/8 text-amber-500 text-xs font-semibold hover:bg-amber-500/15 transition-colors"
+                      >
+                        + Add Task
+                      </button>
+                    </div>
+
+                    {showAddTask && (
+                      <div className="mb-4 p-3 bg-white/[0.03] rounded-lg border border-white/5">
+                        <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Task title..." className="input-field w-full mb-2 text-sm" />
+                        <div className="flex gap-2 mb-2">
+                          <input type="date" value={newTaskDueDate} onChange={e => setNewTaskDueDate(e.target.value)} className="input-field flex-1 text-sm" />
+                          <select value={newTaskCategory} onChange={e => setNewTaskCategory(e.target.value)} className="input-field flex-1 text-sm">
+                            <option value="call">📞 Call</option>
+                            <option value="email">📧 Email</option>
+                            <option value="meeting">🤝 Meeting</option>
+                            <option value="showing">🏠 Showing</option>
+                            <option value="follow-up">📅 Follow-up</option>
+                            <option value="other">📝 Other</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <select value={newTaskPriority} onChange={e => setNewTaskPriority(e.target.value as any)} className="input-field flex-1 text-sm">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                          </select>
+                          <button onClick={addLeadTask} className="px-4 py-2 bg-amber-500 text-black rounded-lg text-sm font-semibold hover:bg-amber-400 transition-colors">Save</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {leadTasks.filter(t => t.status === 'pending').map(task => {
+                      const isOverdue = task.due_date && new Date(task.due_date) < new Date()
+                      const categoryColors: Record<string, string> = {
+                        call: 'bg-blue-500/12 text-blue-400',
+                        email: 'bg-purple-500/12 text-purple-400',
+                        meeting: 'bg-amber-500/12 text-amber-400',
+                        showing: 'bg-green-500/12 text-green-400',
+                        'follow-up': 'bg-orange-500/12 text-orange-400',
+                        other: 'bg-gray-500/12 text-gray-400'
+                      }
+                      const catClass = categoryColors[task.category || 'other'] || categoryColors.other
+                      return (
+                        <div key={task.id} className={`flex items-center gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-lg mb-2 cursor-pointer ${isOverdue ? 'border-l-[3px] border-l-red-400' : ''}`}>
+                          <button onClick={() => toggleTaskComplete(task.id, task.status)} className="w-5 h-5 rounded-full border-2 border-white/15 flex-shrink-0 hover:border-green-400 transition-colors" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-medium text-white truncate">{task.title}</p>
+                            <p className={`text-[11px] mt-0.5 ${isOverdue ? 'text-red-400' : 'text-gray-500'}`}>
+                              {isOverdue ? 'Overdue • ' : ''}{task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'} • {task.category || 'Other'}
+                            </p>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase ${catClass}`}>{task.category || 'other'}</span>
+                        </div>
+                      )
+                    })}
+
+                    {leadTasks.filter(t => t.status === 'completed').length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-[11px] text-gray-500 uppercase tracking-wider mb-2">Completed</p>
+                        {leadTasks.filter(t => t.status === 'completed').map(task => (
+                          <div key={task.id} className="flex items-center gap-3 p-2.5 bg-white/[0.02] border border-white/[0.03] rounded-lg mb-1.5 opacity-50">
+                            <button onClick={() => toggleTaskComplete(task.id, task.status)} className="w-5 h-5 rounded-full bg-green-400 border-2 border-green-400 flex-shrink-0 flex items-center justify-center">
+                              <span className="text-[10px] text-black font-bold">✓</span>
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium text-gray-500 line-through truncate">{task.title}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {leadTasks.length === 0 && !showAddTask && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="text-3xl mb-2">✅</p>
+                        <p className="text-sm">No tasks yet</p>
+                        <p className="text-xs mt-1">Add a task to track follow-ups and to-dos</p>
+                      </div>
+                    )}
+                  </div>
+                )}
             </div>
 
             {/* Footer */}
@@ -2002,12 +2164,12 @@ export default function LeadsPage() {
                 🗑️ Delete
               </button>
               <div className="flex-1" />
-              <button 
-                onClick={() => { setSelectedLead(null); setAiResponse(null); setInlineNotes(''); setInlinePriority(5); setViewTab('overview'); setLeadNotes([]); setNewNoteContent(''); }} 
-                className="px-4 py-2.5 bg-white/5 text-gray-300 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
-              >
-                Close
-              </button>
+                <button 
+                  onClick={() => { setSelectedLead(null); setAiResponse(null); setInlineNotes(''); setInlinePriority(5); setViewTab('overview'); setLeadNotes([]); setNewNoteContent(''); setLeadTasks([]); setShowAddTask(false); setNewTaskTitle(''); }} 
+                  className="px-4 py-2.5 bg-white/5 text-gray-300 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
+                >
+                  Close
+                </button>
             </div>
           </div>
         </div>

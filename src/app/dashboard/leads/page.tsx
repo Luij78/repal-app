@@ -989,17 +989,46 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* Add/Edit Lead Modal - FULL SCREEN */}
+      {/* Add/Edit Lead Modal - Centered Slide-up Panel */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-dark-bg z-50 overflow-y-auto">
-          <div ref={editModalRef} className="min-h-full">
-            <div className="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 bg-dark-bg z-10">
-              <h2 className="text-xl font-semibold text-white">{editingLead ? 'Edit Contact' : 'Create Contact'}</h2>
-              <button onClick={resetForm} className="text-gray-400 hover:text-white text-2xl leading-none">
-                ✕
-              </button>
+        <div 
+          className="modal-panel-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) resetForm(); }}
+        >
+          <div ref={editModalRef} className="modal-panel">
+            {/* Header with Avatar */}
+            <div className="p-4 md:p-6 border-b border-dark-border">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  {/* Avatar - only show when editing, not creating */}
+                  {editingLead && (
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold text-white flex-shrink-0 ${
+                      (editingLead.priority || 5) <= 3 ? 'bg-gradient-to-br from-red-500 to-orange-500' :
+                      (editingLead.priority || 5) <= 6 ? 'bg-gradient-to-br from-amber-500 to-yellow-500' :
+                      'bg-gradient-to-br from-gray-500 to-gray-600'
+                    }`}>
+                      {getInitials(editingLead.name)}
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-bold text-white">
+                      {editingLead ? 'Edit Contact' : 'Create Contact'}
+                    </h2>
+                    {editingLead && (
+                      <p className="text-gray-400 text-sm mt-1">{editingLead.name}</p>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  onClick={resetForm} 
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-            <div className="p-6 space-y-5">
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
               {/* === CONTACT INFO SECTION === */}
               <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border">Contact Info</div>
               
@@ -1379,13 +1408,38 @@ export default function LeadsPage() {
               </div>
 
             </div>
-            <div className="p-6 border-t border-dark-border flex gap-3 sticky bottom-0 bg-dark-bg">
-              <button onClick={resetForm} className="btn-secondary flex-1">
-                ✕ Cancel
-              </button>
-              <button onClick={saveLead} className="btn-primary flex-1" disabled={!formData.firstName.trim()}>
-                💾 {editingLead ? 'Save' : 'Save'}
-              </button>
+            {/* Footer */}
+            <div className="p-4 md:p-6 border-t border-dark-border flex items-center justify-between gap-3 bg-dark-card">
+              {/* Left: Delete (only when editing) */}
+              <div className="footer-left">
+                {editingLead && (
+                  <button 
+                    onClick={() => {
+                      deleteLead(editingLead.id)
+                      resetForm()
+                    }} 
+                    className="px-4 py-2.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-medium border border-red-500/20"
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
+              </div>
+              {/* Right: Cancel + Save Contact */}
+              <div className="footer-right flex gap-3">
+                <button 
+                  onClick={resetForm} 
+                  className="px-4 py-2.5 bg-white/5 text-gray-300 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={saveLead} 
+                  className="px-4 py-2.5 bg-primary-500 text-dark-bg rounded-lg hover:bg-primary-600 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed" 
+                  disabled={!formData.firstName.trim()}
+                >
+                  💾 Save Contact
+                </button>
+              </div>
             </div>
           </div>
         </div>

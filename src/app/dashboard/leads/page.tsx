@@ -1000,7 +1000,10 @@ export default function LeadsPage() {
               </button>
             </div>
             <div className="p-6 space-y-5">
-              {/* === NAME SECTION === */}
+              {/* === CONTACT INFO SECTION === */}
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border">Contact Info</div>
+              
+              {/* Name */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">First Name <span className="text-red-400">*</span></label>
@@ -1024,7 +1027,142 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              {/* === INTENT / SOURCE ROW === */}
+              {/* Email */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">📧 Personal Email</label>
+                  <input
+                    type="email"
+                    value={formData.emailPersonal}
+                    onChange={(e) => setFormData({ ...formData, emailPersonal: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">📧 Work Email</label>
+                  <input
+                    type="email"
+                    value={formData.emailWork}
+                    onChange={(e) => setFormData({ ...formData, emailWork: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="email@work.com"
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">📱 Mobile</label>
+                  <input
+                    type="tel"
+                    value={formData.phoneMobile}
+                    onChange={(e) => setFormData({ ...formData, phoneMobile: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="555-555-5555"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">📱 Home</label>
+                  <input
+                    type="tel"
+                    value={formData.phoneHome}
+                    onChange={(e) => setFormData({ ...formData, phoneHome: e.target.value })}
+                    className="input-field w-full"
+                    placeholder="555-555-5555"
+                  />
+                </div>
+              </div>
+
+              {/* === STATUS & PRIORITY SECTION === */}
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border mt-6">Status & Priority</div>
+              
+              {/* Status Pills */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Status</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'hot' as Lead['status'] })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      formData.status === 'hot'
+                        ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
+                    }`}
+                  >
+                    🔥 Hot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'new' as Lead['status'] })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      formData.status === 'new'
+                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
+                    }`}
+                  >
+                    New
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'nurture' as Lead['status'] })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      formData.status === 'nurture'
+                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
+                    }`}
+                  >
+                    Nurture
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'watch' as Lead['status'] })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      formData.status === 'watch'
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
+                    }`}
+                  >
+                    Watch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'pending' as Lead['status'] })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      formData.status === 'pending'
+                        ? 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
+                    }`}
+                  >
+                    Pending
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'past_client' as Lead['status'] })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      formData.status === 'past_client'
+                        ? 'bg-green-500/20 text-green-400 border-green-500/50'
+                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
+                    }`}
+                  >
+                    Past Client
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'inactive' as Lead['status'] })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      formData.status === 'inactive'
+                        ? 'bg-gray-500/20 text-gray-400 border-gray-500/50'
+                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
+                    }`}
+                  >
+                    Inactive
+                  </button>
+                </div>
+              </div>
+
+              {/* Intent / Stage Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Intent</label>
@@ -1039,22 +1177,6 @@ export default function LeadsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm mb-1">Source <span className="text-red-400">*</span></label>
-                  <select
-                    value={formData.source}
-                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    className="input-field w-full"
-                  >
-                    {sourceOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* === STAGE / STATUS ROW === */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
                   <label className="block text-gray-400 text-sm mb-1">Stage <span className="text-red-400">*</span></label>
                   <select
                     value={formData.stage}
@@ -1066,21 +1188,9 @@ export default function LeadsPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Lead['status'] })}
-                    className="input-field w-full"
-                  >
-                    {statusOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
-              {/* === PRIORITY TRACK === */}
+              {/* Priority Track */}
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Priority</label>
                 <div className="flex items-center gap-1">
@@ -1115,70 +1225,10 @@ export default function LeadsPage() {
                 </p>
               </div>
 
-              {/* === DIVIDER === */}
-              <div className="border-t border-dark-border"></div>
-
-              {/* === EMAIL SECTION (Brivity style) === */}
-              <div className="space-y-3">
-                <p className="text-gray-300 text-sm font-medium">Email</p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-400 text-sm w-20">Personal</span>
-                    <input
-                      type="email"
-                      value={formData.emailPersonal}
-                      onChange={(e) => setFormData({ ...formData, emailPersonal: e.target.value })}
-                      className="input-field flex-1"
-                      placeholder="Email"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-400 text-sm w-20">Work</span>
-                    <input
-                      type="email"
-                      value={formData.emailWork}
-                      onChange={(e) => setFormData({ ...formData, emailWork: e.target.value })}
-                      className="input-field flex-1"
-                      placeholder="Email"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* === DIVIDER === */}
-              <div className="border-t border-dark-border"></div>
-
-              {/* === PHONE SECTION (Brivity style) === */}
-              <div className="space-y-3">
-                <p className="text-gray-300 text-sm font-medium">Phone</p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-400 text-sm w-20">Mobile</span>
-                    <input
-                      type="tel"
-                      value={formData.phoneMobile}
-                      onChange={(e) => setFormData({ ...formData, phoneMobile: e.target.value })}
-                      className="input-field flex-1"
-                      placeholder="555-555-5555"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-400 text-sm w-20">Home</span>
-                    <input
-                      type="tel"
-                      value={formData.phoneHome}
-                      onChange={(e) => setFormData({ ...formData, phoneHome: e.target.value })}
-                      className="input-field flex-1"
-                      placeholder="555-555-5555"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* === DIVIDER === */}
-              <div className="border-t border-dark-border"></div>
-
-              {/* === AREA & FOLLOW-UP === */}
+              {/* === PROPERTY PREFERENCES SECTION === */}
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border mt-6">Property Preferences</div>
+              
+              {/* Area & Follow-up */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Preferred Area</label>
@@ -1201,7 +1251,7 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              {/* === BUDGET === */}
+              {/* Budget */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Budget Min</label>
@@ -1225,7 +1275,7 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              {/* === PROPERTY INTEREST === */}
+              {/* Property Interest */}
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Property Interest</label>
                 <input
@@ -1237,24 +1287,32 @@ export default function LeadsPage() {
                 />
               </div>
 
-              {/* === DIVIDER === */}
-              <div className="border-t border-dark-border"></div>
-
-              {/* === PERSONAL DETAILS (Brivity style) === */}
-              <p className="text-gray-300 text-sm font-medium">Personal Details</p>
+              {/* === PERSONAL DETAILS SECTION === */}
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border mt-6">Personal Details</div>
               
-              {/* === DESCRIPTION === */}
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input-field w-full h-20 resize-none"
-                  placeholder="Quick notes about this contact..."
-                />
+              {/* Birthday & Anniversary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">🎂 Birthday</label>
+                  <input
+                    type="date"
+                    value={formData.birthday}
+                    onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">🏠 Home Anniversary</label>
+                  <input
+                    type="date"
+                    value={formData.home_anniversary}
+                    onChange={(e) => setFormData({ ...formData, home_anniversary: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
               </div>
 
-              {/* === COMPANY === */}
+              {/* Company */}
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Company</label>
                 <input
@@ -1266,10 +1324,32 @@ export default function LeadsPage() {
                 />
               </div>
 
-              {/* === DIVIDER === */}
-              <div className="border-t border-dark-border"></div>
+              {/* Source */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Source <span className="text-red-400">*</span></label>
+                <select
+                  value={formData.source}
+                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                  className="input-field w-full"
+                >
+                  {sourceOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
 
-              {/* === NOTES WITH VOICE === */}
+              {/* Description */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="input-field w-full h-20 resize-none"
+                  placeholder="Quick notes about this contact..."
+                />
+              </div>
+
+              {/* Notes with Voice */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-gray-400 text-sm">Notes</label>
@@ -1297,29 +1377,6 @@ export default function LeadsPage() {
                   <p className="text-xs text-red-400 mt-1 animate-pulse">🎤 Listening... speak now</p>
                 )}
               </div>
-
-              {/* === DATES === */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">🎂 Birthday</label>
-                  <input
-                    type="date"
-                    value={formData.birthday}
-                    onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                    className="input-field w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">🏠 Home Anniversary</label>
-                  <input
-                    type="date"
-                    value={formData.home_anniversary}
-                    onChange={(e) => setFormData({ ...formData, home_anniversary: e.target.value })}
-                    className="input-field w-full"
-                  />
-                </div>
-              </div>
-
 
             </div>
             <div className="p-6 border-t border-dark-border flex gap-3 sticky bottom-0 bg-dark-bg">

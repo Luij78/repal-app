@@ -5,7 +5,7 @@ export interface Lead {
   email: string | null
   phone: string | null
   source: string
-  status: 'new' | 'contacted' | 'qualified' | 'negotiating' | 'closed' | 'lost'
+  status: 'new' | 'contacted' | 'qualified' | 'negotiating' | 'closed' | 'lost' | 'hot' | 'nurture' | 'watch' | 'pending' | 'past_client' | 'inactive' | 'unqualified' | 'archived'
   type: 'buyer' | 'seller' | 'both' | 'buyer55' | 'investor' | 'renter'
   notes: string | null
   property_interest: string | null

@@ -774,59 +774,66 @@ export default function LeadsPage() {
                   setInlineNotes(lead.notes || '')
                   setInlinePriority(lead.priority || 5)
                 }}
-                className={`card transition-all cursor-pointer hover:border-primary-500/30 ${isExpanded ? 'border-primary-500/50' : ''}`}
+                className={`relative card transition-all cursor-pointer hover:border-primary-500/30 pr-12 ${isExpanded ? 'border-primary-500/50' : ''}`}
               >
+                {/* Edit Pencil - Top Right */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingLead(lead)
+                  }}
+                  className="absolute top-3 right-3 text-gray-500 hover:text-primary-500 p-1.5 rounded-lg hover:bg-primary-500/10 transition-colors text-sm z-10"
+                  title="Edit lead"
+                >
+                  ✏️
+                </button>
+
                 {/* Lead Header Row */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${priorityColors.bg} ${priorityColors.border} border`}>
-                      <span className="text-lg">{getPriorityEmoji(priority)}</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {/* Clickable name to expand notes */}
-                        <button
-                          onClick={() => {
-                            if (isExpanded) {
-                              setExpandedLeadId(null)
-                              setInlineNotes('')
-                              setInlinePriority(5)
-                            } else {
-                              setExpandedLeadId(lead.id)
-                              setInlineNotes(lead.notes || '')
-                              setInlinePriority(lead.priority || 5)
-                            }
-                          }}
-                          className="font-semibold text-white hover:text-primary-500 transition-colors text-left"
-                        >
-                          {lead.name}
-                        </button>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${priorityColors.bg} ${priorityColors.text}`}>
-                          P{priority}
-                        </span>
-                      </div>
-                      <p className="text-gray-400 text-sm flex items-center gap-2">
-                        <span>{typeLabels[lead.type]?.icon} {typeLabels[lead.type]?.label}</span>
-                        {lead.preferred_area && <span>• {lead.preferred_area}</span>}
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  {/* Avatar with Initials + Gradient */}
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0 ${
+                    priority <= 3 ? 'bg-gradient-to-br from-red-500 to-orange-500' :
+                    priority <= 6 ? 'bg-gradient-to-br from-amber-500 to-yellow-500' :
+                    'bg-gradient-to-br from-gray-500 to-gray-600'
+                  }`}>
+                    {getInitials(lead.name)}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${statusColors[lead.status]}`}>
-                      {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                  
+                  {/* Lead Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-white truncate">{lead.name}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 ${
+                        priority <= 3 ? 'bg-red-500/15 text-red-400' :
+                        priority <= 6 ? 'bg-amber-500/15 text-amber-400' :
+                        'bg-gray-500/15 text-gray-400'
+                      }`}>
+                        P{priority}
+                      </span>
+                    </div>
+                    <p className="text-gray-500 text-sm flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <span>{typeLabels[lead.type]?.icon} {typeLabels[lead.type]?.label}</span>
+                      {lead.preferred_area && <><span className="text-gray-600">•</span><span>{lead.preferred_area}</span></>}
+                      {(lead.budget_min || lead.budget_max) && (
+                        <><span className="text-gray-600">•</span><span>{formatCurrency(lead.budget_min)}–{formatCurrency(lead.budget_max)}</span></>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Right Side - Status + Follow-up */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide ${statusColors[lead.status]}`}>
+                      {lead.status.replace('_', ' ')}
                     </span>
                     {lead.follow_up_date && (
-                      <span className="text-gray-500 text-sm hidden sm:block">
+                      <span className={`text-xs hidden sm:block ${
+                        new Date(lead.follow_up_date) < new Date() ? 'text-red-400' :
+                        new Date(lead.follow_up_date).toDateString() === new Date().toDateString() ? 'text-amber-400' :
+                        'text-gray-500'
+                      }`}>
                         📅 {formatDate(lead.follow_up_date)}
                       </span>
                     )}
-                    {/* View Details Button */}
-                    <button
-                      onClick={() => setSelectedLead(lead)}
-                      className="text-gray-400 hover:text-white text-sm"
-                    >
-                      ⋮
-                    </button>
                   </div>
                 </div>
 

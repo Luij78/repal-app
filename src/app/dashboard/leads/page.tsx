@@ -1120,7 +1120,7 @@ export default function LeadsPage() {
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
               {/* === CONTACT INFO SECTION === */}
-              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border">Contact Info</div>
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5">Contact Info</div>
               
               {/* Name */}
               <div className="grid grid-cols-2 gap-4">
@@ -1195,89 +1195,46 @@ export default function LeadsPage() {
               </div>
 
               {/* === STATUS & PRIORITY SECTION === */}
-              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border mt-6">Status & Priority</div>
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Status & Priority</div>
               
               {/* Status Pills */}
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Status</label>
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: 'hot' as Lead['status'] })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                      formData.status === 'hot'
-                        ? 'bg-red-500/20 text-red-400 border-red-500/50'
-                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
-                    }`}
-                  >
-                    🔥 Hot
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: 'new' as Lead['status'] })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                      formData.status === 'new'
-                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
-                    }`}
-                  >
-                    New
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: 'nurture' as Lead['status'] })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                      formData.status === 'nurture'
-                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
-                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
-                    }`}
-                  >
-                    Nurture
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: 'watch' as Lead['status'] })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                      formData.status === 'watch'
-                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
-                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
-                    }`}
-                  >
-                    Watch
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: 'pending' as Lead['status'] })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                      formData.status === 'pending'
-                        ? 'bg-orange-500/20 text-orange-400 border-orange-500/50'
-                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
-                    }`}
-                  >
-                    Pending
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: 'past_client' as Lead['status'] })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                      formData.status === 'past_client'
-                        ? 'bg-green-500/20 text-green-400 border-green-500/50'
-                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
-                    }`}
-                  >
-                    Past Client
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: 'inactive' as Lead['status'] })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                      formData.status === 'inactive'
-                        ? 'bg-gray-500/20 text-gray-400 border-gray-500/50'
-                        : 'bg-dark-card text-gray-500 border-dark-border hover:border-gray-600'
-                    }`}
-                  >
-                    Inactive
-                  </button>
+                  {/* If a legacy status is present, keep it visible/selectable */}
+                  {formData.status && !statusOptions.some(s => s.value === formData.status) && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, status: formData.status as Lead['status'] })}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        statusColors[formData.status]
+                          ? `border-2 ${statusColors[formData.status]}`
+                          : 'border-2 bg-white/[0.04] text-gray-200 border-white/20'
+                      }`}
+                      aria-pressed="true"
+                    >
+                      {(formData.status || '').toString().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </button>
+                  )}
+                  {statusOptions.map((opt) => {
+                    const selected = formData.status === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, status: opt.value as Lead['status'] })}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                          selected
+                            ? `border-2 ${opt.color}`
+                            : 'bg-white/[0.03] text-gray-400 border-white/10 hover:border-white/20'
+                        }`}
+                        aria-pressed={selected}
+                      >
+                        {opt.value === 'hot' ? '🔥 ' : ''}
+                        {opt.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -1285,15 +1242,37 @@ export default function LeadsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Intent</label>
-                  <select
-                    value={formData.intent}
-                    onChange={(e) => setFormData({ ...formData, intent: e.target.value, type: e.target.value as Lead['type'] })}
-                    className="input-field w-full"
-                  >
-                    {intentOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.icon} {opt.label}</option>
-                    ))}
-                  </select>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {formData.intent && !intentOptions.some(i => i.value === formData.intent) && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, intent: formData.intent, type: formData.intent as Lead['type'] })}
+                        className="px-4 py-2 rounded-full text-sm font-medium border-2 bg-white/[0.04] text-gray-200 border-white/20"
+                        aria-pressed="true"
+                      >
+                        {(typeLabels[formData.intent]?.icon ? `${typeLabels[formData.intent].icon} ` : '')}
+                        {(typeLabels[formData.intent]?.label ?? formData.intent).toString()}
+                      </button>
+                    )}
+                    {intentOptions.map((opt) => {
+                      const selected = formData.intent === opt.value
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, intent: opt.value, type: opt.value as Lead['type'] })}
+                          className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                            selected
+                              ? 'border-2 bg-primary-500/15 text-primary-500 border-primary-500/50'
+                              : 'bg-white/[0.03] text-gray-400 border-white/10 hover:border-white/20'
+                          }`}
+                          aria-pressed={selected}
+                        >
+                          {opt.icon} {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Stage <span className="text-red-400">*</span></label>
@@ -1318,19 +1297,16 @@ export default function LeadsPage() {
                       key={p}
                       type="button"
                       onClick={() => setFormData({ ...formData, priority: p })}
-                      className={`flex-1 h-9 rounded-md text-xs font-bold transition-all flex items-center justify-center ${
+                      className={`flex-1 h-9 rounded-lg text-xs font-semibold transition-all flex items-center justify-center border ${
                         formData.priority === p
                           ? p <= 3
-                            ? 'bg-red-500/25 text-red-400 border-2 border-red-500'
+                            ? 'border-2 bg-red-500/20 text-red-300 border-red-500'
                             : p <= 6
-                            ? 'bg-amber-500/25 text-amber-400 border-2 border-amber-500'
-                            : 'bg-gray-500/25 text-gray-400 border-2 border-gray-500'
-                          : p <= 3
-                          ? 'bg-red-500/10 text-red-400/60 border border-white/5 hover:bg-red-500/20'
-                          : p <= 6
-                          ? 'bg-amber-500/10 text-amber-400/60 border border-white/5 hover:bg-amber-500/20'
-                          : 'bg-gray-500/10 text-gray-400/60 border border-white/5 hover:bg-gray-500/20'
+                            ? 'border-2 bg-primary-500/20 text-primary-500 border-primary-500'
+                            : 'border-2 bg-gray-500/20 text-gray-300 border-gray-500'
+                          : 'bg-white/[0.03] text-gray-600 border-white/10 hover:border-white/20'
                       }`}
+                      aria-pressed={formData.priority === p}
                     >
                       {p}
                     </button>
@@ -1338,14 +1314,14 @@ export default function LeadsPage() {
                 </div>
                 <p className={`text-xs mt-2 ${
                   formData.priority <= 3 ? 'text-red-400' : 
-                  formData.priority <= 6 ? 'text-amber-400' : 'text-gray-400'
+                  formData.priority <= 6 ? 'text-primary-500' : 'text-gray-400'
                 }`}>
                   {priorityDescriptions[formData.priority]}
                 </p>
               </div>
 
               {/* === PROPERTY PREFERENCES SECTION === */}
-              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border mt-6">Property Preferences</div>
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Property Preferences</div>
               
               {/* Area & Follow-up */}
               <div className="grid grid-cols-2 gap-4">
@@ -1414,8 +1390,8 @@ export default function LeadsPage() {
                 />
               </div>
 
-              {/* === PERSONAL DETAILS SECTION === */}
-              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-dark-border mt-6">Personal Details</div>
+              {/* === LEAD DETAILS SECTION === */}
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Lead Details</div>
               
               {/* Birthday & Anniversary */}
               <div className="grid grid-cols-2 gap-4">
@@ -1464,6 +1440,9 @@ export default function LeadsPage() {
                   ))}
                 </select>
               </div>
+
+              {/* === NOTES SECTION === */}
+              <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Notes</div>
 
               {/* Description */}
               <div>

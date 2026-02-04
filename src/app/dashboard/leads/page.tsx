@@ -172,6 +172,198 @@ function useSpeechToText() {
   return { isListening, transcript, isSupported, toggleListening, setTranscript }
 }
 
+type PricePickerProps = {
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+}
+
+const formatPriceDisplay = (raw: string) => {
+  const digits = (raw || '').replace(/[^0-9]/g, '')
+  if (!digits) return ''
+  const num = Number(digits)
+  if (!Number.isFinite(num)) return ''
+  return `$${num.toLocaleString()}`
+}
+
+const buildPriceOptions = () => {
+  const options: number[] = []
+  for (let v = 50_000; v <= 500_000; v += 25_000) options.push(v)
+  for (let v = 550_000; v <= 1_000_000; v += 50_000) options.push(v)
+  for (let v = 1_100_000; v <= 2_000_000; v += 100_000) options.push(v)
+  for (let v = 2_500_000; v <= 5_000_000; v += 500_000) options.push(v)
+  return options.map((n) => String(n))
+}
+
+const PRICE_OPTIONS = buildPriceOptions()
+
+let activePricePickerId: string | null = null
+let activePricePickerClose: (() => void) | null = null
+
+function PricePicker({ value, onChange, placeholder = 'Select' }: PricePickerProps) {
+  const idRef = useRef(`pp_${Math.random().toString(36).slice(2)}`)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const optionRefs = useRef(new Map<string, HTMLDivElement | null>())
+
+  const [open, setOpen] = useState(false)
+  const [animateIn, setAnimateIn] = useState(false)
+  const [manualText, setManualText] = useState('')
+
+  const close = useCallback(() => {
+    setOpen(false)
+    setAnimateIn(false)
+    if (activePricePickerId === idRef.current) {
+      activePricePickerId = null
+      activePricePickerClose = null
+    }
+  }, [])
+
+  const commitManual = useCallback(() => {
+    const raw = manualText.replace(/[^0-9]/g, '')
+    onChange(raw)
+    close()
+  }, [manualText, onChange, close])
+
+  const toggleOpen = useCallback(() => {
+    setOpen((prev) => {
+      const next = !prev
+      if (next) {
+        if (activePricePickerClose && activePricePickerId !== idRef.current) {
+          activePricePickerClose()
+        }
+        activePricePickerId = idRef.current
+        activePricePickerClose = close
+        setManualText(formatPriceDisplay(value))
+      } else {
+        if (activePricePickerId === idRef.current) {
+          activePricePickerId = null
+          activePricePickerClose = null
+        }
+        setAnimateIn(false)
+      }
+      return next
+    })
+  }, [close, value])
+
+  useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (e: PointerEvent) => {
+      const el = rootRef.current
+      if (!el) return
+      if (!el.contains(e.target as Node)) close()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open, close])
+
+  useEffect(() => {
+    if (!open) return
+    const raf = requestAnimationFrame(() => setAnimateIn(true))
+    return () => cancelAnimationFrame(raf)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const selectedEl = optionRefs.current.get(value)
+    selectedEl?.scrollIntoView({ block: 'nearest' })
+    const focusRaf = requestAnimationFrame(() => inputRef.current?.focus())
+    return () => cancelAnimationFrame(focusRaf)
+  }, [open, value])
+
+  useEffect(() => {
+    return () => {
+      if (activePricePickerId === idRef.current) {
+        activePricePickerId = null
+        activePricePickerClose = null
+      }
+    }
+  }, [])
+
+  const display = value ? formatPriceDisplay(value) : ''
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={toggleOpen}
+        className={[
+          'bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg p-[10px_12px] text-base cursor-pointer flex justify-between items-center w-full',
+          open ? 'border-[#f59e0b]' : 'hover:border-[#f59e0b]',
+          display ? 'text-white' : 'text-gray-500',
+        ].join(' ')}
+      >
+        <span className="truncate">{display || placeholder}</span>
+        <span
+          className={[
+            'text-[10px] text-gray-500 transition-transform duration-150',
+            open ? 'rotate-180' : '',
+          ].join(' ')}
+        >
+          ▼
+        </span>
+      </button>
+
+      {open ? (
+        <div
+          className={[
+            'absolute top-[calc(100%+4px)] left-0 right-0 bg-[#1a1a2e] border border-[rgba(255,255,255,0.12)] rounded-[10px] z-[200] shadow-[0_12px_32px_rgba(0,0,0,0.5)]',
+            'transition-all duration-150',
+            animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
+          ].join(' ')}
+        >
+          <div className="p-2 border-b border-[rgba(255,255,255,0.06)]">
+            <input
+              ref={inputRef}
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  commitManual()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  close()
+                }
+              }}
+              inputMode="numeric"
+              placeholder="Type amount…"
+              className="bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] rounded-md p-[8px_10px] text-white text-base w-full"
+            />
+          </div>
+
+          <div className="max-h-[200px] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {PRICE_OPTIONS.map((opt) => {
+              const selected = opt === value
+              return (
+                <div
+                  key={opt}
+                  ref={(el) => {
+                    optionRefs.current.set(opt, el)
+                  }}
+                  onClick={() => {
+                    onChange(opt)
+                    close()
+                  }}
+                  className={[
+                    'p-[10px_14px] text-[15px] cursor-pointer border-l-[3px] border-transparent',
+                    selected
+                      ? 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b] font-semibold border-l-[#f59e0b]'
+                      : 'text-[#aaa] hover:bg-[rgba(245,158,11,0.08)] hover:text-white',
+                  ].join(' ')}
+                >
+                  {formatPriceDisplay(opt)}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export default function LeadsPage() {
   const { user } = useUser()
   const [leads, setLeads] = useState<Lead[]>([])
@@ -1295,37 +1487,25 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              {/* Budget */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">Budget Min</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={formData.budget_min ? `$${Number(formData.budget_min).toLocaleString()}` : ''}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, '')
-                      setFormData({ ...formData, budget_min: raw })
-                    }}
-                    className="input-field w-full"
-                    placeholder="$250,000"
-                  />
+                {/* Budget */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Budget Min</label>
+                    <PricePicker
+                      value={formData.budget_min}
+                      onChange={(val) => setFormData({ ...formData, budget_min: val })}
+                      placeholder="Select min"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Budget Max</label>
+                    <PricePicker
+                      value={formData.budget_max}
+                      onChange={(val) => setFormData({ ...formData, budget_max: val })}
+                      placeholder="Select max"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">Budget Max</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={formData.budget_max ? `$${Number(formData.budget_max).toLocaleString()}` : ''}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, '')
-                      setFormData({ ...formData, budget_max: raw })
-                    }}
-                    className="input-field w-full"
-                    placeholder="$400,000"
-                  />
-                </div>
-              </div>
 
               {/* Property Interest */}
               <div>

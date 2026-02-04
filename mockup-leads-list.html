@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REPal — Leads List Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .app-nav {
+      background: #111118;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .app-nav .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .app-nav .nav-links { display: flex; gap: 4px; }
+    .app-nav .nav-link {
+      padding: 8px 14px; border-radius: 8px; font-size: 13px;
+      color: #666; cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .app-nav .nav-link:hover { color: #aaa; background: rgba(255,255,255,0.04); }
+    .app-nav .nav-link.active { color: #f59e0b; background: rgba(245,158,11,0.08); }
+
+    .page { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;
+    }
+    .page-header h1 { font-size: 24px; font-weight: 700; }
+    .page-header p { color: #666; font-size: 14px; margin-top: 2px; }
+    .btn-add {
+      padding: 10px 20px; background: #f59e0b; color: #000; font-weight: 600;
+      font-size: 14px; border: none; border-radius: 10px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-add:hover { background: #d97706; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .stat-card:hover { border-color: rgba(255,255,255,0.12); transform: translateY(-1px); }
+    .stat-card.active { border-color: #f59e0b; background: rgba(245,158,11,0.05); }
+    .stat-card .number { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-card .label { font-size: 12px; color: #666; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card.hot .number { color: #f87171; }
+    .stat-card.warm .number { color: #fbbf24; }
+    .stat-card.follow .number { color: #4ade80; }
+
+    .filters-row { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+    .search-box { flex: 1; position: relative; }
+    .search-box input {
+      width: 100%; padding: 10px 14px 10px 38px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; color: #fff; font-size: 14px; font-family: inherit; transition: all 0.2s;
+    }
+    .search-box input:focus { outline: none; border-color: #f59e0b; }
+    .search-box input::placeholder { color: #444; }
+    .search-box .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #555; font-size: 14px; }
+    .filter-select {
+      padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; color: #aaa; font-size: 13px; font-family: inherit; cursor: pointer;
+      transition: all 0.2s; min-width: 130px;
+    }
+    .filter-select:focus { outline: none; border-color: #f59e0b; }
+
+    .followup-banner {
+      background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15);
+      border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .followup-banner .left { display: flex; align-items: center; gap: 10px; }
+    .followup-banner .left span { font-size: 14px; color: #f59e0b; font-weight: 500; }
+    .followup-banner .names { color: #aaa; font-size: 13px; }
+    .followup-banner .count-pill {
+      background: #f59e0b; color: #000; font-weight: 700; font-size: 12px;
+      padding: 4px 10px; border-radius: 20px; cursor: pointer;
+    }
+
+    .lead-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .lead-card {
+      position: relative;
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px; padding-right: 48px;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .lead-card:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
+
+    .lead-pencil {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 13px;
+      color: #444;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      z-index: 2;
+    }
+    .lead-pencil:hover { color: #f59e0b; background: rgba(245,158,11,0.1); }
+
+    .lead-avatar {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; flex-shrink: 0;
+    }
+    .lead-avatar.hot { background: linear-gradient(135deg, #ef4444, #f97316); }
+    .lead-avatar.warm { background: linear-gradient(135deg, #f59e0b, #eab308); }
+    .lead-avatar.cold { background: linear-gradient(135deg, #374151, #6b7280); }
+
+    .lead-info { flex: 1; min-width: 0; }
+    .lead-name-row { display: flex; align-items: center; gap: 8px; }
+    .lead-name {
+      font-size: 14px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .lead-priority {
+      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+    }
+    .lead-priority.hot { background: rgba(239,68,68,0.15); color: #f87171; }
+    .lead-priority.warm { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .lead-priority.cold { background: rgba(107,114,128,0.15); color: #9ca3af; }
+
+    .lead-meta {
+      font-size: 12px; color: #555; margin-top: 3px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .lead-meta .dot { color: #333; }
+
+    .lead-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .lead-status {
+      padding: 4px 10px; border-radius: 6px; font-size: 11px;
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .lead-status.hot { background: rgba(239,68,68,0.12); color: #f87171; }
+    .lead-status.new { background: rgba(59,130,246,0.12); color: #60a5fa; }
+    .lead-status.nurture { background: rgba(168,85,247,0.12); color: #c084fc; }
+    .lead-status.watch { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .lead-status.past { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .lead-status.inactive { background: rgba(107,114,128,0.12); color: #9ca3af; }
+
+    .lead-followup { font-size: 11px; color: #555; white-space: nowrap; }
+    .lead-followup.soon { color: #f59e0b; }
+    .lead-followup.overdue { color: #f87171; }
+
+    @media (max-width: 768px) {
+      .page { padding: 16px; }
+      .page-header h1 { font-size: 20px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stat-card { padding: 12px; }
+      .stat-card .number { font-size: 22px; }
+      .filters-row { flex-wrap: wrap; }
+      .search-box { min-width: 100%; }
+      .filter-select { flex: 1; min-width: 0; }
+      .lead-card { padding: 12px 14px; padding-right: 40px; gap: 10px; }
+      .lead-avatar { width: 38px; height: 38px; font-size: 12px; }
+      .lead-right { gap: 8px; }
+      .lead-followup { display: none; }
+      .followup-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .followup-banner .names { display: none; }
+      .app-nav { padding: 12px 16px; }
+      .app-nav .nav-links { gap: 2px; }
+      .app-nav .nav-link { padding: 6px 10px; font-size: 12px; }
+      .btn-add { padding: 8px 14px; font-size: 13px; }
+      .lead-name { font-size: 13px; }
+      .lead-pencil { top: 8px; right: 8px; font-size: 12px; }
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <div class="app-nav">
+    <div class="logo">🏠 REPal</div>
+    <div class="nav-links">
+      <a class="nav-link" href="#">Dashboard</a>
+      <a class="nav-link active" href="#">Leads</a>
+      <a class="nav-link" href="#">Tasks</a>
+      <a class="nav-link" href="#">Templates</a>
+      <a class="nav-link" href="#">Coach</a>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1>👥 Lead Manager</h1>
+        <p>172 contacts from Brivity</p>
+      </div>
+      <button class="btn-add">+ Add Lead</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card active"><div class="number">172</div><div class="label">Total Leads</div></div>
+      <div class="stat-card hot"><div class="number">🔥 12</div><div class="label">Hot Leads</div></div>
+      <div class="stat-card warm"><div class="number">☀️ 34</div><div class="label">Warm Leads</div></div>
+      <div class="stat-card follow"><div class="number">5</div><div class="label">Follow-ups Today</div></div>
+    </div>
+
+    <div class="followup-banner">
+      <div class="left">
+        <span>📞 5 follow-ups due today</span>
+        <span class="names">Doreen, Rebecca, Todd, Kim, Dean</span>
+      </div>
+      <div class="count-pill">View All</div>
+    </div>
+
+    <div class="filters-row">
+      <div class="search-box">
+        <span class="icon">🔍</span>
+        <input type="text" placeholder="Search leads..." />
+      </div>
+      <select class="filter-select">
+        <option>All Status</option><option>Hot</option><option>New</option>
+        <option>Nurture</option><option>Watch</option><option>Past Client</option><option>Inactive</option>
+      </select>
+      <select class="filter-select">
+        <option>All Priority</option><option>🔥 Hot (1-3)</option><option>☀️ Warm (4-6)</option><option>❄️ Cold (7-10)</option>
+      </select>
+    </div>
+
+    <div class="lead-list">
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar hot">DM</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Doreen Melchiorre</span><span class="lead-priority hot">P3</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Winter Park</span><span class="dot">•</span><span>$350K–$425K</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status hot">Hot</span>
+          <span class="lead-followup soon">📅 Feb 5</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar hot">RJ</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Rebecca Jaqua</span><span class="lead-priority hot">P2</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Winter Park</span><span class="dot">•</span><span>$300K–$400K</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status hot">Hot</span>
+          <span class="lead-followup overdue">📅 Overdue</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar hot">DG</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Dean Green</span><span class="lead-priority hot">P1</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Clermont</span><span class="dot">•</span><span>$275K–$350K</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status hot">Hot</span>
+          <span class="lead-followup soon">📅 Feb 4</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar warm">TB</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Todd Bethell</span><span class="lead-priority warm">P5</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Clermont</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status nurture">Nurture</span>
+          <span class="lead-followup">📅 Feb 8</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar warm">KB</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Kim Browning</span><span class="lead-priority warm">P4</span></div>
+          <div class="lead-meta"><span>💰 Seller</span><span class="dot">•</span><span>Orlando</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status watch">Watch</span>
+          <span class="lead-followup">📅 Feb 10</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar warm">AF</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Amy Feliciano</span><span class="lead-priority warm">P5</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Kissimmee</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status nurture">Nurture</span>
+          <span class="lead-followup">📅 Feb 12</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar warm">IF</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Ivan Flores</span><span class="lead-priority warm">P6</span></div>
+          <div class="lead-meta"><span>🔄 Seller/Buyer</span><span class="dot">•</span><span>Orlando</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status watch">Watch</span>
+          <span class="lead-followup">📅 Feb 15</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar cold">CM</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Cody Morris</span><span class="lead-priority cold">P7</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Sanford</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status inactive">Inactive</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar cold">BM</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Brandon Messinger</span><span class="lead-priority cold">P8</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Kissimmee</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status new">New</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar cold">NB</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Nicholas Bird</span><span class="lead-priority cold">P9</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status inactive">Inactive</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar warm">CS</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Carol Smiley</span><span class="lead-priority warm">P5</span></div>
+          <div class="lead-meta"><span>💰 Seller</span><span class="dot">•</span><span>Winter Garden</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status past">Past Client</span>
+        </div>
+      </div>
+
+      <div class="lead-card">
+        <span class="lead-pencil">✏️</span>
+        <div class="lead-avatar cold">EV</div>
+        <div class="lead-info">
+          <div class="lead-name-row"><span class="lead-name">Emily Vanhorn</span><span class="lead-priority cold">P7</span></div>
+          <div class="lead-meta"><span>🏠 Buyer</span><span class="dot">•</span><span>Davenport</span></div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-status new">New</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="text-align:center; padding:24px; color:#444; font-size:13px;">
+      Showing 12 of 172 leads • Scroll to load more
+    </div>
+  </div>
+
+</body>
+</html>

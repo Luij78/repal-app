@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 import type { Lead, Task } from '@/types/database'
+import CsvImportModal from '@/components/CsvImportModal'
 
 const priorityDescriptions: Record<number, string> = {
   1: '🔥 Buying in 1-2 months',
@@ -380,6 +381,7 @@ export default function LeadsPage() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [viewTab, setViewTab] = useState<'overview' | 'activity' | 'tasks'>('overview')
   const [importStatus, setImportStatus] = useState('')
+  const [showImportModal, setShowImportModal] = useState(false)
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
   const [inlineNotes, setInlineNotes] = useState('')
   const [inlinePriority, setInlinePriority] = useState(5)
@@ -971,12 +973,20 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-bold text-white">👥 Lead Manager</h1>
           <p className="text-gray-400">Manage your clients and prospects</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <span>+</span> Add Lead
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-4 py-2 bg-dark-border hover:bg-dark-border/80 text-white rounded-lg transition-colors flex items-center gap-2 border border-dark-border hover:border-primary-500/50"
+          >
+            <span>📄</span> Import CSV
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <span>+</span> Add Lead
+          </button>
+        </div>
       </div>
 
       {/* Import Status Toast */}
@@ -2173,6 +2183,17 @@ export default function LeadsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showImportModal && (
+        <CsvImportModal
+          onClose={() => setShowImportModal(false)}
+          onImportComplete={() => {
+            fetchLeads()
+            setShowImportModal(false)
+          }}
+        />
       )}
     </div>
   )

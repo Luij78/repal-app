@@ -16,6 +16,9 @@ export default function SignUpPage() {
             elements: {
               rootBox: 'mx-auto',
               card: 'bg-dark-card border border-dark-border shadow-xl',
+              socialButtonsBlockButton: 'hidden',
+              socialButtonsBlockButtonArrow: 'hidden',
+              dividerRow: 'hidden',
             }
           }}
         />

@@ -220,7 +220,7 @@ body.modal-open {
   border: 1px solid var(--dark-border, #2a2a2a);
   border-radius: 0.5rem;
   color: white;
-  font-size: 0.875rem;
+  font-size: 1rem; /* 16px prevents iOS zoom on focus */
   transition: all 0.2s;
 }
 
@@ -253,6 +253,18 @@ select.input-field option {
 /* Date input dark styling */
 input[type="date"].input-field {
   color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  display: block;
+  width: 100% !important;
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"].input-field::-webkit-date-and-time-value {
+  text-align: left;
+  width: 100%;
 }
 
 input[type="date"].input-field::-webkit-calendar-picker-indicator {
@@ -271,7 +283,7 @@ select.input-field:focus {
   z-index: 10;
 }
 
-/* Fix for iOS safari modal scrolling */
+/* Fix for iOS safari modal scrolling & zoom */
 @supports (-webkit-touch-callout: none) {
   .modal-overlay {
     -webkit-overflow-scrolling: touch;
@@ -279,6 +291,14 @@ select.input-field:focus {
   
   .modal-content {
     transform: translateZ(0);
+  }
+
+  /* Prevent iOS zoom on input focus — 16px minimum */
+  .input-field,
+  input[type="date"].input-field,
+  select.input-field,
+  textarea.input-field {
+    font-size: 16px !important;
   }
 }
 

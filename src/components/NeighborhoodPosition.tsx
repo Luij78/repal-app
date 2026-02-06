@@ -5,15 +5,21 @@ import { useState, useEffect, useRef } from 'react'
 interface PropertyData {
   address: string
   listingPrice: number | null
+  estimatedValue: number | null
   city: string
   state: string
   zip: string
   county: string | null
   propertyType: string
-  bedrooms?: number
-  bathrooms?: number
-  squareFootage?: number
-  yearBuilt?: number
+  bedrooms: number | null
+  bathrooms: number | null
+  squareFootage: number | null
+  yearBuilt: number | null
+  lotSize: number | null
+  taxAssessedValue: number | null
+  rentEstimate: number | null
+  daysOnMarket: number | null
+  listingStatus: string | null
 }
 
 interface NeighborhoodData {
@@ -42,7 +48,7 @@ interface ApiResponse {
   position: 'progression' | 'regression' | 'unknown'
   percentage: number
   listingGap: ListingGap | null
-  dataSource: string
+  dataSource: 'zillow+census' | 'census' | 'manual+census'
 }
 
 interface PhotonFeature {
@@ -207,18 +213,29 @@ export default function NeighborhoodPosition() {
   // Calculate bar positions
   const displayPrice = property?.listingPrice || null
   const median = neighborhood?.median || 0
+  const zestimate = property?.estimatedValue || null
   let propertyBarPosition = 50
   let medianBarPosition = 50
+  let zestimateBarPosition = 50
   let barMin = 0
   let barMax = 0
 
   if (displayPrice && median) {
-    const prices = [displayPrice, median, neighborhood?.rangeLow || median, neighborhood?.rangeHigh || median]
+    const prices = [
+      displayPrice, 
+      median, 
+      neighborhood?.rangeLow || median, 
+      neighborhood?.rangeHigh || median,
+      ...(zestimate ? [zestimate] : [])
+    ]
     barMin = Math.min(...prices) * 0.9
     barMax = Math.max(...prices) * 1.1
     const barRange = barMax - barMin
     propertyBarPosition = barRange > 0 ? ((displayPrice - barMin) / barRange) * 100 : 50
     medianBarPosition = barRange > 0 ? ((median - barMin) / barRange) * 100 : 50
+    if (zestimate) {
+      zestimateBarPosition = barRange > 0 ? ((zestimate - barMin) / barRange) * 100 : 50
+    }
   }
 
   return (
@@ -279,23 +296,40 @@ export default function NeighborhoodPosition() {
           </div>
         </div>
 
-        {/* Listing Price Input - PROMINENT */}
-        <div className="bg-[#0d0e14] border border-[#fbbf24]/30 rounded-lg p-3">
-          <label className="block text-[#fbbf24] font-semibold text-sm mb-2">
-            💰 Asking Price (from MLS/Zillow)
-          </label>
-          <input
-            type="text"
-            value={listingPrice}
-            onChange={(e) => setListingPrice(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="e.g. $249,900"
-            className="w-full bg-[#1a1b23] border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#fbbf24]/50"
-          />
-          <p className="text-gray-500 text-xs mt-1.5">
-            💡 Enter the listing/asking price you see on Zillow or MLS to detect opportunities
-          </p>
-        </div>
+        {/* Listing Price Input - Show only if Zillow didn't auto-populate */}
+        {(!data || data.dataSource !== 'zillow+census') && (
+          <div className="bg-[#0d0e14] border border-[#fbbf24]/30 rounded-lg p-3">
+            <label className="block text-[#fbbf24] font-semibold text-sm mb-2">
+              💰 Asking Price (from MLS/Zillow)
+            </label>
+            <input
+              type="text"
+              value={listingPrice}
+              onChange={(e) => setListingPrice(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="e.g. $249,900"
+              className="w-full bg-[#1a1b23] border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#fbbf24]/50"
+            />
+            <p className="text-gray-500 text-xs mt-1.5">
+              💡 Enter the listing/asking price you see on Zillow or MLS to detect opportunities
+            </p>
+          </div>
+        )}
+        
+        {/* Auto-fetched Zillow Data Indicator */}
+        {data && data.dataSource === 'zillow+census' && (
+          <div className="bg-[#34d399]/10 border border-[#34d399]/30 rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">✅</span>
+              <div>
+                <p className="text-[#34d399] font-semibold text-sm">Auto-fetched from Zillow</p>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  Listing data retrieved automatically • No manual entry needed
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Loading State */}
@@ -336,29 +370,35 @@ export default function NeighborhoodPosition() {
                 <h3 className="text-white font-semibold text-lg mb-1">
                   {property.address}
                 </h3>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <span>{property.propertyType}</span>
-                  {property.bedrooms && property.bathrooms && (
-                    <>
-                      <span>•</span>
-                      <span>{property.bedrooms} bed</span>
-                      <span>•</span>
-                      <span>{property.bathrooms} bath</span>
-                    </>
-                  )}
-                  {property.squareFootage && (
-                    <>
-                      <span>•</span>
-                      <span>{property.squareFootage.toLocaleString()} sqft</span>
-                    </>
-                  )}
-                  {property.yearBuilt && (
-                    <>
-                      <span>•</span>
-                      <span>Built {property.yearBuilt}</span>
-                    </>
-                  )}
-                </div>
+                {(property.bedrooms || property.bathrooms || property.squareFootage || property.yearBuilt) && (
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <span>{property.propertyType}</span>
+                    {property.bedrooms && (
+                      <>
+                        <span>•</span>
+                        <span>{property.bedrooms} bed</span>
+                      </>
+                    )}
+                    {property.bathrooms && (
+                      <>
+                        <span>•</span>
+                        <span>{property.bathrooms} bath</span>
+                      </>
+                    )}
+                    {property.squareFootage && (
+                      <>
+                        <span>•</span>
+                        <span>{property.squareFootage.toLocaleString()} sqft</span>
+                      </>
+                    )}
+                    {property.yearBuilt && (
+                      <>
+                        <span>•</span>
+                        <span>Built {property.yearBuilt}</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               {hasPosition && (
                 <div className={`px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 ${
@@ -386,19 +426,33 @@ export default function NeighborhoodPosition() {
                   <p className="text-white text-xl font-bold">{formatCurrency(listingGap.listingPrice)}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">ZIP Median</p>
-                  <p className="text-[#34d399] text-xl font-bold">{formatCurrency(listingGap.neighborhoodMedian)}</p>
+                  <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Market Value</p>
+                  <p className="text-[#34d399] text-xl font-bold">
+                    {property?.estimatedValue ? formatCurrency(property.estimatedValue) : formatCurrency(listingGap.neighborhoodMedian)}
+                  </p>
+                  <p className="text-gray-500 text-[10px]">
+                    {property?.estimatedValue ? 'Zestimate' : 'ZIP Median'}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Below Median</p>
+                  <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Below Market</p>
                   <p className="text-[#fbbf24] text-xl font-bold">{listingGap.percentBelow}%</p>
                 </div>
               </div>
-              <div className="bg-black/20 rounded-lg p-3">
+              <div className="bg-black/20 rounded-lg p-3 mb-2">
                 <p className="text-[#fbbf24] text-sm font-semibold">
-                  💰 {formatCurrency(listingGap.difference)} below ZIP median
+                  💰 {formatCurrency(listingGap.difference)} below {property?.estimatedValue ? 'estimated market value' : 'ZIP median'}
                 </p>
               </div>
+              {property?.listingStatus && property?.daysOnMarket !== null && (
+                <div className="flex items-center gap-3 text-xs text-gray-400">
+                  <span className="px-2 py-1 bg-white/5 rounded">
+                    {property.listingStatus.replace(/_/g, ' ')}
+                  </span>
+                  <span>•</span>
+                  <span>{property.daysOnMarket} days on market</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -424,7 +478,14 @@ export default function NeighborhoodPosition() {
                   {property.listingPrice ? 'Listing Price' : 'No Listing Price'}
                 </p>
                 {property.listingPrice ? (
-                  <p className="text-white text-2xl font-bold">{formatCurrency(property.listingPrice)}</p>
+                  <>
+                    <p className="text-white text-2xl font-bold">{formatCurrency(property.listingPrice)}</p>
+                    {property.estimatedValue && (
+                      <p className="text-gray-500 text-xs mt-1">
+                        Est. value: {formatCurrency(property.estimatedValue)} (Zestimate)
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <p className="text-gray-500 text-lg">Enter above to compare</p>
                 )}
@@ -450,6 +511,16 @@ export default function NeighborhoodPosition() {
                     >
                       <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-gray-400 whitespace-nowrap">Median</span>
                     </div>
+                    
+                    {/* Zestimate marker (if available) */}
+                    {zestimate && (
+                      <div
+                        className="absolute top-[-4px] bottom-[-4px] w-0.5 bg-[#fbbf24]/60 z-10"
+                        style={{ left: `${Math.max(2, Math.min(98, zestimateBarPosition))}%` }}
+                      >
+                        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-[#fbbf24] whitespace-nowrap">AVM</span>
+                      </div>
+                    )}
                     
                     {/* Property position marker */}
                     <div
@@ -500,7 +571,7 @@ export default function NeighborhoodPosition() {
               <span>📊</span>
               <span>ZIP {neighborhood.zipCode} Stats</span>
             </h4>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.05]">
                 <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Median Home Value</p>
                 <p className="text-white font-bold text-lg">{formatCurrency(neighborhood.median)}</p>
@@ -519,8 +590,41 @@ export default function NeighborhoodPosition() {
                 </div>
               )}
             </div>
+            
+            {/* Zillow-sourced data */}
+            {(property.taxAssessedValue || property.rentEstimate || property.lotSize) && (
+              <>
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm">
+                  <span>🏠</span>
+                  <span>Property Details (Zillow)</span>
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  {property.taxAssessedValue && (
+                    <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Tax Assessed Value</p>
+                      <p className="text-white font-bold text-lg">{formatCurrency(property.taxAssessedValue)}</p>
+                    </div>
+                  )}
+                  {property.rentEstimate && (
+                    <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Rent Estimate</p>
+                      <p className="text-white font-bold text-lg">{formatCurrency(property.rentEstimate)}/mo</p>
+                      <p className="text-gray-500 text-xs">Zestimate</p>
+                    </div>
+                  )}
+                  {property.lotSize && (
+                    <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.05]">
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Lot Size</p>
+                      <p className="text-white font-bold text-lg">{property.lotSize.toLocaleString()} sqft</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            
             <p className="text-gray-600 text-xs mt-4">
-              📡 {neighborhood.source} • $0 cost • Unlimited searches
+              📡 {neighborhood.source}
+              {data.dataSource === 'zillow+census' && ' + Zillow via RapidAPI (50 free/mo)'}
             </p>
           </div>
         </div>

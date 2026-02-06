@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 // ============================================================
-// FREE Property Intelligence Engine — No RentCast, Zero Cost
-// Sources: Census Bureau Geocoder + ACS 5-Year Estimates
+// Property Intelligence Engine
+// Sources: Census Bureau (FREE) + Zillow via RapidAPI (50/mo free)
 // ============================================================
 
 interface CensusMatch {
@@ -38,6 +38,26 @@ interface CensusMedianResult {
   zipCode: string
   population?: number
   medianRent?: number
+}
+
+interface ZillowListing {
+  unformattedPrice: number
+  beds: number
+  baths: number
+  livingArea: number
+  homeType: string
+  homeStatus: string
+  zestimate: number
+  taxAssessedValue: number
+  rentZestimate: number
+  lotAreaValue: number
+  daysOnZillow: number
+  address: {
+    street: string
+    city: string
+    state: string
+    zipcode: string
+  }
 }
 
 // Step 1: Geocode address to get ZIP code (Census Bureau — FREE)
@@ -111,8 +131,93 @@ async function getCensusMedian(zipCode: string): Promise<CensusMedianResult | nu
   }
 }
 
-// Step 3: Extract property details from address using Census geocoder data
-// (beds/baths/sqft not available from Census — show what we have)
+// Step 3: Lookup property on Zillow via RapidAPI
+async function fetchZillowData(
+  address: string,
+  city: string,
+  state: string
+): Promise<ZillowListing | null> {
+  const apiKey = process.env.RAPIDAPI_KEY
+  const apiHost = process.env.RAPIDAPI_HOST
+
+  // Skip if credentials not configured
+  if (!apiKey || !apiHost) {
+    console.log('Zillow API credentials not configured — skipping Zillow lookup')
+    return null
+  }
+
+  try {
+    // Build Zillow search URL for the city/state region
+    const citySlug = city.toLowerCase().replace(/\s+/g, '-')
+    const stateSlug = state.toLowerCase()
+    
+    const searchQueryState = JSON.stringify({
+      usersSearchTerm: address,
+      isMapVisible: true,
+      filterState: {
+        sort: { value: 'globalrelevanceex' }
+      },
+      isListVisible: true
+    })
+
+    const zillowUrl = `https://www.zillow.com/${citySlug}-${stateSlug}/?searchQueryState=${encodeURIComponent(searchQueryState)}`
+    
+    // Call RapidAPI Zillow scraper
+    const apiUrl = `https://${apiHost}/api/search/byurl?url=${encodeURIComponent(zillowUrl)}`
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-key': apiKey,
+        'x-rapidapi-host': apiHost,
+      },
+    })
+
+    if (!response.ok) {
+      console.error(`Zillow API error: ${response.status} ${response.statusText}`)
+      return null
+    }
+
+    const data = await response.json()
+
+    if (!data.success || !data.results || data.results.length === 0) {
+      console.log('Zillow: No results found for address')
+      return null
+    }
+
+    // Extract street number and name from input address for matching
+    const addressParts = address.match(/^(\d+)\s+(.+?)(?:,|$)/)
+    if (!addressParts) {
+      console.log('Could not parse street number from address')
+      return null
+    }
+
+    const streetNumber = addressParts[1].toLowerCase()
+    const streetName = addressParts[2].toLowerCase().trim()
+
+    // Find matching property by street address
+    const match = data.results.find((listing: ZillowListing) => {
+      const listingStreet = listing.address?.street?.toLowerCase() || ''
+      return (
+        listingStreet.includes(streetNumber) &&
+        listingStreet.includes(streetName.split(' ')[0]) // Match first word of street name
+      )
+    })
+
+    if (!match) {
+      console.log('Zillow: Property not found in results (may not be actively listed)')
+      return null
+    }
+
+    return match
+  } catch (error) {
+    console.error('Zillow API error:', error)
+    return null
+  }
+}
+
+// Extract property details from address using Census geocoder data
+// (fallback if Zillow doesn't return data)
 function inferPropertyType(address: string): string {
   const lower = address.toLowerCase()
   if (lower.includes('apt') || lower.includes('unit') || lower.includes('#')) return 'Condo/Apartment'
@@ -148,12 +253,15 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Step 3: Build the response
-    // Listing price can come from:
-    // - Query param (manual entry or MLS integration)
-    // - Future: scraping integration
-    const listingPrice = listingPriceParam ? parseInt(listingPriceParam) : null
+    // Step 3: Try Zillow lookup (optional, graceful fallback)
+    const zillowData = await fetchZillowData(address, geocode.city, geocode.state)
 
+    // Step 4: Build the response
+    // Listing price priority:
+    // 1. Zillow (if found)
+    // 2. Manual entry (query param)
+    // 3. null (no price available)
+    const listingPrice = zillowData?.unformattedPrice || (listingPriceParam ? parseInt(listingPriceParam) : null)
     const median = censusData.median
 
     // Use listing price for position calculation if available
@@ -179,15 +287,35 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Determine data source
+    let dataSource: 'zillow+census' | 'census' | 'manual+census'
+    if (zillowData) {
+      dataSource = 'zillow+census'
+    } else if (listingPriceParam) {
+      dataSource = 'manual+census'
+    } else {
+      dataSource = 'census'
+    }
+
     const response = {
       property: {
         address: geocode.matchedAddress,
         listingPrice,
+        estimatedValue: zillowData?.zestimate || null,
+        bedrooms: zillowData?.beds || null,
+        bathrooms: zillowData?.baths || null,
+        squareFootage: zillowData?.livingArea || null,
+        yearBuilt: null, // Not provided by Zillow API
+        propertyType: zillowData?.homeType || inferPropertyType(address),
+        lotSize: zillowData?.lotAreaValue || null,
+        taxAssessedValue: zillowData?.taxAssessedValue || null,
+        rentEstimate: zillowData?.rentZestimate || null,
+        daysOnMarket: zillowData?.daysOnZillow || null,
+        listingStatus: zillowData?.homeStatus || null,
         city: geocode.city,
         state: geocode.state,
         zip: geocode.zip,
         county: geocode.county || null,
-        propertyType: inferPropertyType(address),
         lat: geocode.lat,
         lon: geocode.lon,
       },
@@ -204,7 +332,7 @@ export async function GET(req: NextRequest) {
       position: position || 'unknown',
       percentage,
       listingGap,
-      dataSource: 'free',
+      dataSource,
     }
 
     return NextResponse.json(response)

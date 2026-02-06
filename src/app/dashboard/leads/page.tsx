@@ -2013,12 +2013,20 @@ export default function LeadsPage() {
                                 {/* Note content card */}
                                 <div className="bg-white/[0.03] border border-white/[0.05] rounded-lg px-3 py-2.5 relative group">
                                   {editingNoteId === note.id ? (
-                                    <div>
+                                    <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col p-4 md:relative md:inset-auto md:z-auto md:bg-transparent md:p-0">
+                                      <div className="flex items-center justify-between mb-3 md:hidden">
+                                        <span className="text-sm text-gray-400 font-semibold">Edit Note</span>
+                                        <button
+                                          onClick={() => { setEditingNoteId(null); setEditingNoteContent(''); }}
+                                          className="text-gray-400 hover:text-white text-lg"
+                                        >✕</button>
+                                      </div>
                                       <textarea
                                         value={editingNoteContent}
                                         onChange={(e) => setEditingNoteContent(e.target.value)}
-                                        className="w-full bg-white/[0.04] border border-white/10 rounded-lg p-2 text-sm text-white resize-none focus:outline-none focus:border-amber-500"
-                                        rows={3}
+                                        className="w-full flex-1 md:flex-none bg-white/[0.04] border border-amber-500/30 rounded-lg p-3 text-sm text-white resize-none focus:outline-none focus:border-amber-500"
+                                        rows={12}
+                                        style={{ minHeight: '60vh' }}
                                         autoFocus
                                       />
                                       <div className="flex gap-2 mt-2">

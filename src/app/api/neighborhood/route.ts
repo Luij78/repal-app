@@ -4,55 +4,42 @@ export const dynamic = 'force-dynamic'
 
 const RENTCAST_API_KEY = process.env.RENTCAST_API_KEY
 
-interface RentCastProperty {
-  address: string
-  addressLine1?: string
-  city?: string
-  state?: string
-  zipCode?: string
-  price?: number
-  bedrooms?: number
-  bathrooms?: number
-  squareFootage?: number
-  yearBuilt?: number
-  propertyType?: string
-}
-
-interface ComparableSale {
-  id: string
-  address: string
-  addressLine1?: string
-  city?: string
-  state?: string
-  zipCode?: string
+interface AVMResponse {
   price: number
-  soldDate?: string
-  bedrooms?: number
-  bathrooms?: number
-  squareFootage?: number
-  distance?: number
-}
-
-interface NeighborhoodResponse {
-  property: {
-    address: string
-    estimatedValue: number
-    bedrooms?: number
-    bathrooms?: number
-    squareFootage?: number
+  priceRangeLow: number
+  priceRangeHigh: number
+  subjectProperty: {
+    formattedAddress: string
+    addressLine1: string
+    city: string
+    state: string
+    zipCode: string
+    bedrooms: number
+    bathrooms: number
+    squareFootage: number
+    yearBuilt: number
+    propertyType: string
+    lastSaleDate?: string
+    lastSalePrice?: number
   }
-  comps: Array<{
-    address: string
+  comparables: Array<{
+    formattedAddress: string
+    addressLine1: string
+    city: string
+    state: string
+    zipCode: string
     price: number
-    date: string
-    bedrooms?: number
-    bathrooms?: number
-    squareFootage?: number
-    distance?: number
+    bedrooms: number
+    bathrooms: number
+    squareFootage: number
+    yearBuilt: number
+    distance: number
+    correlation: number
+    listedDate?: string
+    removedDate?: string
+    daysOnMarket?: number
+    status?: string
   }>
-  median: number
-  position: 'progression' | 'regression'
-  percentage: number
 }
 
 export async function GET(req: NextRequest) {
@@ -68,9 +55,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'RentCast API key not configured' }, { status: 500 })
     }
 
-    // Fetch property details and value estimate
-    const propertyResponse = await fetch(
-      `https://api.rentcast.io/v1/properties?address=${encodeURIComponent(address)}`,
+    // Single API call gets property value + comps
+    const avmResponse = await fetch(
+      `https://api.rentcast.io/v1/avm/value?address=${encodeURIComponent(address)}`,
       {
         headers: {
           'X-Api-Key': RENTCAST_API_KEY,
@@ -78,41 +65,34 @@ export async function GET(req: NextRequest) {
       }
     )
 
-    if (!propertyResponse.ok) {
-      const errorText = await propertyResponse.text()
-      console.error('RentCast property API error:', errorText)
+    if (!avmResponse.ok) {
+      const errorText = await avmResponse.text()
+      console.error('RentCast AVM API error:', avmResponse.status, errorText)
+      if (avmResponse.status === 404) {
+        return NextResponse.json(
+          { error: 'Property not found. Try a full address with city, state, and ZIP.' },
+          { status: 404 }
+        )
+      }
       return NextResponse.json(
         { error: 'Failed to fetch property data from RentCast' },
-        { status: propertyResponse.status }
+        { status: avmResponse.status }
       )
     }
 
-    const propertyData: RentCastProperty = await propertyResponse.json()
+    const data: AVMResponse = await avmResponse.json()
 
-    // Fetch comparable sales
-    const compsResponse = await fetch(
-      `https://api.rentcast.io/v1/comparable-sales?address=${encodeURIComponent(address)}&limit=5`,
-      {
-        headers: {
-          'X-Api-Key': RENTCAST_API_KEY,
-        },
-      }
-    )
-
-    if (!compsResponse.ok) {
-      const errorText = await compsResponse.text()
-      console.error('RentCast comps API error:', errorText)
+    if (!data.price) {
       return NextResponse.json(
-        { error: 'Failed to fetch comparable sales from RentCast' },
-        { status: compsResponse.status }
+        { error: 'Property value estimate not available for this address' },
+        { status: 404 }
       )
     }
 
-    const compsData: ComparableSale[] = await compsResponse.json()
+    // Use top 10 comps for median calculation
+    const comps = (data.comparables || []).slice(0, 10)
+    const compPrices = comps.map(c => c.price).filter(p => p > 0)
 
-    // Calculate median from comps
-    const compPrices = compsData.map(comp => comp.price).filter(price => price > 0)
-    
     if (compPrices.length === 0) {
       return NextResponse.json(
         { error: 'No comparable sales found for this address' },
@@ -120,53 +100,41 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const sortedPrices = compPrices.sort((a, b) => a - b)
+    // Calculate median from comps
+    const sortedPrices = [...compPrices].sort((a, b) => a - b)
     const median = sortedPrices.length % 2 === 0
       ? (sortedPrices[sortedPrices.length / 2 - 1] + sortedPrices[sortedPrices.length / 2]) / 2
       : sortedPrices[Math.floor(sortedPrices.length / 2)]
 
-    // Determine property value (use price or estimate)
-    const estimatedValue = propertyData.price || 0
-
-    if (!estimatedValue) {
-      return NextResponse.json(
-        { error: 'Property value estimate not available' },
-        { status: 404 }
-      )
-    }
-
-    // Calculate position and percentage
-    const position: 'progression' | 'regression' = estimatedValue < median ? 'progression' : 'regression'
+    const estimatedValue = data.price
+    const position = estimatedValue < median ? 'progression' : 'regression'
     const percentage = Math.abs(((estimatedValue - median) / median) * 100)
 
-    // Format property address
-    const propertyAddress = propertyData.addressLine1
-      ? `${propertyData.addressLine1}, ${propertyData.city}, ${propertyData.state} ${propertyData.zipCode}`
-      : propertyData.address
-
-    // Format response
-    const response: NeighborhoodResponse = {
+    const response = {
       property: {
-        address: propertyAddress || address,
+        address: data.subjectProperty.formattedAddress || address,
         estimatedValue,
-        bedrooms: propertyData.bedrooms,
-        bathrooms: propertyData.bathrooms,
-        squareFootage: propertyData.squareFootage,
+        priceRangeLow: data.priceRangeLow,
+        priceRangeHigh: data.priceRangeHigh,
+        bedrooms: data.subjectProperty.bedrooms,
+        bathrooms: data.subjectProperty.bathrooms,
+        squareFootage: data.subjectProperty.squareFootage,
+        yearBuilt: data.subjectProperty.yearBuilt,
+        propertyType: data.subjectProperty.propertyType,
       },
-      comps: compsData.map(comp => ({
-        address: comp.addressLine1
-          ? `${comp.addressLine1}, ${comp.city}, ${comp.state} ${comp.zipCode}`
-          : comp.address,
+      comps: comps.slice(0, 5).map(comp => ({
+        address: comp.formattedAddress,
         price: comp.price,
-        date: comp.soldDate || 'Unknown',
+        date: comp.removedDate || comp.listedDate || 'Unknown',
         bedrooms: comp.bedrooms,
         bathrooms: comp.bathrooms,
         squareFootage: comp.squareFootage,
-        distance: comp.distance,
+        distance: Math.round(comp.distance * 100) / 100,
+        correlation: Math.round(comp.correlation * 100),
       })),
-      median,
+      median: Math.round(median),
       position,
-      percentage: Math.round(percentage * 10) / 10, // Round to 1 decimal
+      percentage: Math.round(percentage * 10) / 10,
     }
 
     return NextResponse.json(response)

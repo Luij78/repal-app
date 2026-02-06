@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface PropertyData {
   address: string
@@ -10,6 +10,10 @@ interface PropertyData {
   zip: string
   county: string | null
   propertyType: string
+  bedrooms?: number
+  bathrooms?: number
+  squareFootage?: number
+  yearBuilt?: number
 }
 
 interface NeighborhoodData {
@@ -41,6 +45,21 @@ interface ApiResponse {
   dataSource: string
 }
 
+interface PhotonFeature {
+  properties: {
+    housenumber?: string
+    street?: string
+    city?: string
+    state?: string
+    postcode?: string
+    county?: string
+    name?: string
+  }
+  geometry: {
+    coordinates: [number, number]
+  }
+}
+
 const formatCurrency = (amount: number) => {
   return '$' + amount.toLocaleString()
 }
@@ -51,6 +70,102 @@ export default function NeighborhoodPosition() {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<ApiResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<PhotonFeature[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Format Photon result as a readable address
+  const formatPhotonAddress = (feature: PhotonFeature) => {
+    const { housenumber, street, city, state, postcode } = feature.properties
+    const parts = []
+    if (housenumber && street) parts.push(`${housenumber} ${street}`)
+    else if (street) parts.push(street)
+    if (city) parts.push(city)
+    if (state) parts.push(state)
+    if (postcode) parts.push(postcode)
+    return parts.join(', ')
+  }
+
+  // Fetch address suggestions from Photon API
+  const fetchSuggestions = async (query: string) => {
+    if (!query.trim() || query.length < 3) {
+      setSuggestions([])
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`
+      )
+      const data = await response.json()
+      setSuggestions(data.features || [])
+      setShowSuggestions(true)
+    } catch (err) {
+      console.error('Photon API error:', err)
+      setSuggestions([])
+    }
+  }
+
+  // Debounced search
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      fetchSuggestions(address)
+    }, 300)
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [address])
+
+  // Click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleSelectSuggestion = (feature: PhotonFeature) => {
+    const formattedAddress = formatPhotonAddress(feature)
+    setAddress(formattedAddress)
+    setSuggestions([])
+    setShowSuggestions(false)
+    setSelectedIndex(-1)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedIndex(prev => Math.min(prev + 1, suggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedIndex(prev => Math.max(prev - 1, -1))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+        handleSelectSuggestion(suggestions[selectedIndex])
+      } else {
+        handleSearch()
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false)
+      setSelectedIndex(-1)
+    }
+  }
 
   const handleSearch = async () => {
     if (!address.trim()) return
@@ -84,10 +199,6 @@ export default function NeighborhoodPosition() {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch()
-  }
-
   const { property, neighborhood, position, percentage, listingGap } = data || {}
   const isProgression = position === 'progression'
   const isRegression = position === 'regression'
@@ -114,33 +225,76 @@ export default function NeighborhoodPosition() {
     <div className="space-y-4">
       {/* Search Bar */}
       <div className="bg-[#1a1b23] border border-white/10 rounded-xl p-4">
-        <div className="flex gap-2 mb-3">
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Enter address (e.g. 123 Main St, Orlando, FL 32801)"
-            className="flex-1 bg-[#0d0e14] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#34d399]/50"
-          />
-          <button
-            onClick={handleSearch}
-            disabled={loading || !address.trim()}
-            className="px-5 py-3 bg-[#34d399] text-black font-bold rounded-lg hover:bg-[#2ec48a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm flex items-center gap-2"
-          >
-            🔍 Search
-          </button>
+        {/* Address Input with Autocomplete */}
+        <div ref={wrapperRef} className="relative mb-3">
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Start typing address (e.g. 123 Main St, Orlando, FL)"
+                className="w-full bg-[#0d0e14] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#34d399]/50"
+              />
+              {/* Autocomplete Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1b23] border border-white/20 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                  {suggestions.map((feature, index) => {
+                    const formattedAddress = formatPhotonAddress(feature)
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => handleSelectSuggestion(feature)}
+                        className={`px-4 py-3 cursor-pointer text-sm transition-colors ${
+                          index === selectedIndex
+                            ? 'bg-[#34d399]/20 text-white'
+                            : 'text-gray-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="text-lg mt-0.5">📍</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{formattedAddress}</div>
+                            {feature.properties.county && (
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {feature.properties.county} County
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleSearch}
+              disabled={loading || !address.trim()}
+              className="px-5 py-3 bg-[#34d399] text-black font-bold rounded-lg hover:bg-[#2ec48a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm flex items-center gap-2"
+            >
+              🔍 Search
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2 items-center">
+
+        {/* Listing Price Input - PROMINENT */}
+        <div className="bg-[#0d0e14] border border-[#fbbf24]/30 rounded-lg p-3">
+          <label className="block text-[#fbbf24] font-semibold text-sm mb-2">
+            💰 Asking Price (from MLS/Zillow)
+          </label>
           <input
             type="text"
             value={listingPrice}
             onChange={(e) => setListingPrice(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Listing price (e.g. $249,900)"
-            className="w-56 bg-[#0d0e14] border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#fbbf24]/50"
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="e.g. $249,900"
+            className="w-full bg-[#1a1b23] border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#fbbf24]/50"
           />
-          <span className="text-gray-500 text-xs">Optional — enter asking price to detect opportunities</span>
+          <p className="text-gray-500 text-xs mt-1.5">
+            💡 Enter the listing/asking price you see on Zillow or MLS to detect opportunities
+          </p>
         </div>
       </div>
 
@@ -184,8 +338,26 @@ export default function NeighborhoodPosition() {
                 </h3>
                 <div className="flex items-center gap-2 text-sm text-gray-400">
                   <span>{property.propertyType}</span>
-                  {property.county && <span>• {property.county} County</span>}
-                  <span>• ZIP {property.zip}</span>
+                  {property.bedrooms && property.bathrooms && (
+                    <>
+                      <span>•</span>
+                      <span>{property.bedrooms} bed</span>
+                      <span>•</span>
+                      <span>{property.bathrooms} bath</span>
+                    </>
+                  )}
+                  {property.squareFootage && (
+                    <>
+                      <span>•</span>
+                      <span>{property.squareFootage.toLocaleString()} sqft</span>
+                    </>
+                  )}
+                  {property.yearBuilt && (
+                    <>
+                      <span>•</span>
+                      <span>Built {property.yearBuilt}</span>
+                    </>
+                  )}
                 </div>
               </div>
               {hasPosition && (
@@ -198,42 +370,33 @@ export default function NeighborhoodPosition() {
                   <span>{isProgression ? 'Progression' : 'Regression'}</span>
                 </div>
               )}
-              {!hasPosition && (
-                <div className="px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-gray-500/20 text-gray-400 border border-gray-500/30">
-                  <span>📊</span>
-                  <span>Median Data</span>
-                </div>
-              )}
             </div>
           </div>
 
           {/* 🔥 GOLDEN OPPORTUNITY — Listing Price vs Neighborhood Median */}
           {listingGap && listingGap.signal === 'underpriced' && listingGap.percentBelow >= 5 && (
             <div className="mx-6 mt-6 p-4 rounded-xl bg-gradient-to-r from-[#fbbf24]/20 to-[#f59e0b]/10 border border-[#fbbf24]/40">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="text-2xl">🔥</span>
                 <h4 className="text-[#fbbf24] font-bold text-base">GOLDEN OPPORTUNITY</h4>
               </div>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <div>
-                  <p className="text-gray-400 text-xs uppercase tracking-wider">Listed At</p>
+                  <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Listed At</p>
                   <p className="text-white text-xl font-bold">{formatCurrency(listingGap.listingPrice)}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-xs uppercase tracking-wider">ZIP Median</p>
+                  <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">ZIP Median</p>
                   <p className="text-[#34d399] text-xl font-bold">{formatCurrency(listingGap.neighborhoodMedian)}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-xs uppercase tracking-wider">Below Median</p>
+                  <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Below Median</p>
                   <p className="text-[#fbbf24] text-xl font-bold">{listingGap.percentBelow}%</p>
                 </div>
               </div>
               <div className="bg-black/20 rounded-lg p-3">
                 <p className="text-[#fbbf24] text-sm font-semibold">
-                  💰 {formatCurrency(listingGap.difference)} below neighborhood median
-                </p>
-                <p className="text-gray-400 text-xs mt-1">
-                  Based on U.S. Census median home value for ZIP {neighborhood.zipCode}
+                  💰 {formatCurrency(listingGap.difference)} below ZIP median
                 </p>
               </div>
             </div>
@@ -248,7 +411,7 @@ export default function NeighborhoodPosition() {
               </div>
               <p className="text-gray-300 text-sm">
                 Listed at <span className="text-white font-semibold">{formatCurrency(listingGap.listingPrice)}</span> — 
-                that&apos;s <span className="text-[#fb7185] font-semibold">{listingGap.percentAbove}%</span> above the neighborhood median of {formatCurrency(listingGap.neighborhoodMedian)}.
+                that&apos;s <span className="text-[#fb7185] font-semibold">{listingGap.percentAbove}%</span> above the ZIP median of {formatCurrency(listingGap.neighborhoodMedian)}.
               </p>
             </div>
           )}
@@ -315,13 +478,13 @@ export default function NeighborhoodPosition() {
                         <>
                           <span className="font-bold">{percentage}% below</span> neighborhood median
                           <br />
-                          <span className="text-xs opacity-80">🏆 &quot;Worst house on the best block&quot; — High upside potential</span>
+                          <span className="text-xs opacity-80">🏆 Worst house on the best block — High upside potential</span>
                         </>
                       ) : (
                         <>
                           <span className="font-bold">{percentage}% above</span> neighborhood median
                           <br />
-                          <span className="text-xs opacity-80">⚠️ &quot;Best house on the worst block&quot; — Limited upside</span>
+                          <span className="text-xs opacity-80">⚠️ Best house on the worst block — Limited upside</span>
                         </>
                       )}
                     </p>

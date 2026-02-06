@@ -349,11 +349,16 @@ select.input-field:focus {
 .modal-panel-overlay {
   @apply fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center;
   animation: fadeIn 0.2s ease-out;
+  overflow: hidden;
+  touch-action: none;
 }
 
 .modal-panel {
   @apply w-full max-w-2xl bg-dark-card border border-dark-border flex flex-col;
   max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -364,6 +369,8 @@ select.input-field:focus {
   }
   .modal-panel {
     @apply max-w-full rounded-none;
+    height: 100dvh;
+    max-height: 100dvh;
   }
 }
 

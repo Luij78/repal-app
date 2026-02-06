@@ -569,6 +569,29 @@ export default function LeadsPage() {
     }
   }, [transcript, setTranscript])
 
+  // Lock body scroll when modal is open (prevents background scroll on mobile)
+  useEffect(() => {
+    if (selectedLead || editingLead) {
+      document.body.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+      document.body.style.width = '100%'
+      document.body.style.top = `-${window.scrollY}px`
+    } else {
+      const scrollY = document.body.style.top
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.top = ''
+      window.scrollTo(0, parseInt(scrollY || '0') * -1)
+    }
+    return () => {
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.top = ''
+    }
+  }, [selectedLead, editingLead])
+
   // Auto-scroll notes to bottom when lead is selected (view mode)
   useEffect(() => {
     if (selectedLead && notesScrollRef.current) {

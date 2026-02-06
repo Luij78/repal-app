@@ -405,10 +405,7 @@ export default function LeadsPage() {
     const [newTaskCategory, setNewTaskCategory] = useState('call')
     const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium')
   
-  // Neighborhood search state
-  const [neighborhoodSearchAddress, setNeighborhoodSearchAddress] = useState('')
-  const [showNeighborhoodCard, setShowNeighborhoodCard] = useState(false)
-  const [submittedAddress, setSubmittedAddress] = useState('')
+  // Neighborhood search state (component is now self-contained)
   
   const { isListening, transcript, isSupported, toggleListening, setTranscript } = useSpeechToText()
   
@@ -1070,56 +1067,9 @@ export default function LeadsPage() {
         </button>
       </div>
 
-      {/* Neighborhood Position Search Bar */}
+      {/* Neighborhood Position — Free Engine (Census API) */}
       <div className="mb-6">
-        <div className="flex gap-3 items-center">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={neighborhoodSearchAddress}
-              onChange={(e) => setNeighborhoodSearchAddress(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && neighborhoodSearchAddress.trim()) {
-                  setSubmittedAddress(neighborhoodSearchAddress.trim())
-                  setShowNeighborhoodCard(true)
-                }
-              }}
-              placeholder="Search Address for Neighborhood Position..."
-              className="input-field w-full pr-24"
-            />
-            {neighborhoodSearchAddress && (
-              <button
-                onClick={() => {
-                  setNeighborhoodSearchAddress('')
-                  setShowNeighborhoodCard(false)
-                  setSubmittedAddress('')
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors text-sm"
-                title="Clear"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          <button
-            onClick={() => {
-              if (neighborhoodSearchAddress.trim()) {
-                setSubmittedAddress(neighborhoodSearchAddress.trim())
-                setShowNeighborhoodCard(true)
-              }
-            }}
-            disabled={!neighborhoodSearchAddress.trim()}
-            className="px-6 py-2.5 bg-[#34d399] text-[#1a1b23] rounded-lg font-semibold hover:bg-[#34d399]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            🔍 Search
-          </button>
-        </div>
-        
-        {showNeighborhoodCard && submittedAddress && (
-          <div className="mt-4">
-            <NeighborhoodPosition address={submittedAddress} />
-          </div>
-        )}
+        <NeighborhoodPosition />
       </div>
 
       {/* Today's Follow-ups Alert */}

@@ -2,154 +2,209 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-const RENTCAST_API_KEY = process.env.RENTCAST_API_KEY
+// ============================================================
+// FREE Property Intelligence Engine — No RentCast, Zero Cost
+// Sources: Census Bureau Geocoder + ACS 5-Year Estimates
+// ============================================================
+
+interface CensusMatch {
+  matchedAddress: string
+  coordinates: { x: number; y: number }
+  addressComponents: {
+    zip: string
+    streetName: string
+    city: string
+    state: string
+    fromAddress: string
+    toAddress: string
+  }
+}
+
+interface GeocodeResult {
+  zip: string
+  matchedAddress: string
+  lat: number
+  lon: number
+  city: string
+  state: string
+  county?: string
+}
+
+interface CensusMedianResult {
+  median: number
+  marginOfError: number
+  rangeLow: number
+  rangeHigh: number
+  zipCode: string
+  population?: number
+  medianRent?: number
+}
+
+// Step 1: Geocode address to get ZIP code (Census Bureau — FREE)
+async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
+  const encodedAddress = encodeURIComponent(address)
+  const url = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodedAddress}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`
+
+  const response = await fetch(url)
+  if (!response.ok) return null
+
+  const data = await response.json()
+  const matches = data?.result?.addressMatches
+  if (!matches || matches.length === 0) return null
+
+  const match: CensusMatch = matches[0]
+  const county = match.matchedAddress ? undefined : undefined
+
+  // Try to extract county from geographies
+  let countyName: string | undefined
+  try {
+    const counties = data.result.addressMatches[0]?.geographies?.Counties
+    if (counties && counties[0]) {
+      countyName = counties[0].BASENAME
+    }
+  } catch {
+    // County extraction is optional
+  }
+
+  return {
+    zip: match.addressComponents.zip,
+    matchedAddress: match.matchedAddress || address,
+    lat: match.coordinates.y,
+    lon: match.coordinates.x,
+    city: match.addressComponents.city,
+    state: match.addressComponents.state,
+    county: countyName,
+  }
+}
+
+// Step 2: Get neighborhood median from Census ACS (FREE, no API key)
+async function getCensusMedian(zipCode: string): Promise<CensusMedianResult | null> {
+  // B25077_001E = Median home value
+  // B25077_001M = Margin of error
+  // B01003_001E = Total population
+  // B25064_001E = Median gross rent
+  const fields = 'B25077_001E,B25077_001M,B01003_001E,B25064_001E,NAME'
+  const url = `https://api.census.gov/data/2023/acs/acs5?get=${fields}&for=zip%20code%20tabulation%20area:${zipCode}`
+
+  const response = await fetch(url)
+  if (!response.ok) return null
+
+  const data = await response.json()
+  if (!data || data.length < 2) return null
+
+  const [, values] = data
+  const median = parseInt(values[0])
+  const marginOfError = parseInt(values[1])
+  const population = parseInt(values[2])
+  const medianRent = parseInt(values[3])
+
+  if (isNaN(median) || median <= 0) return null
+
+  return {
+    median,
+    marginOfError: isNaN(marginOfError) ? 0 : marginOfError,
+    rangeLow: median - (isNaN(marginOfError) ? 0 : marginOfError),
+    rangeHigh: median + (isNaN(marginOfError) ? 0 : marginOfError),
+    zipCode,
+    population: isNaN(population) ? undefined : population,
+    medianRent: isNaN(medianRent) ? undefined : medianRent,
+  }
+}
+
+// Step 3: Extract property details from address using Census geocoder data
+// (beds/baths/sqft not available from Census — show what we have)
+function inferPropertyType(address: string): string {
+  const lower = address.toLowerCase()
+  if (lower.includes('apt') || lower.includes('unit') || lower.includes('#')) return 'Condo/Apartment'
+  if (lower.includes('lot')) return 'Land'
+  return 'Single Family'
+}
 
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams
     const address = searchParams.get('address')
+    const listingPriceParam = searchParams.get('listingPrice')
 
     if (!address?.trim()) {
       return NextResponse.json({ error: 'Address is required' }, { status: 400 })
     }
 
-    if (!RENTCAST_API_KEY) {
-      return NextResponse.json({ error: 'RentCast API key not configured' }, { status: 500 })
-    }
-
-    const headers = { 'X-Api-Key': RENTCAST_API_KEY }
-    const encodedAddress = encodeURIComponent(address)
-
-    // Two API calls in parallel:
-    // 1. AVM value (estimated market value + comps)
-    // 2. Sale listings (actual listing/asking price)
-    const [avmResponse, listingResponse] = await Promise.all([
-      fetch(`https://api.rentcast.io/v1/avm/value?address=${encodedAddress}`, { headers }),
-      fetch(`https://api.rentcast.io/v1/listings/sale?address=${encodedAddress}`, { headers }),
-    ])
-
-    if (!avmResponse.ok) {
-      const errorText = await avmResponse.text()
-      console.error('RentCast AVM error:', avmResponse.status, errorText)
-      if (avmResponse.status === 404) {
-        return NextResponse.json(
-          { error: 'Property not found. Try a full address with city, state, and ZIP.' },
-          { status: 404 }
-        )
-      }
+    // Step 1: Geocode the address
+    const geocode = await geocodeAddress(address)
+    if (!geocode) {
       return NextResponse.json(
-        { error: 'Failed to fetch property data from RentCast' },
-        { status: avmResponse.status }
-      )
-    }
-
-    const avmData = await avmResponse.json()
-
-    // Listing data is optional — property may not be listed
-    let listingPrice: number | null = null
-    let listingStatus: string | null = null
-    let listedDate: string | null = null
-    let daysOnMarket: number | null = null
-
-    if (listingResponse.ok) {
-      const listingData = await listingResponse.json()
-      const listing = Array.isArray(listingData) ? listingData[0] : listingData
-      if (listing?.price) {
-        listingPrice = listing.price
-        listingStatus = listing.status || null
-        listedDate = listing.listedDate || null
-        daysOnMarket = listing.daysOnMarket || null
-      }
-    }
-
-    if (!avmData.price) {
-      return NextResponse.json(
-        { error: 'Property value estimate not available for this address' },
+        { error: 'Address not found. Try a full address with street, city, state, and ZIP.' },
         { status: 404 }
       )
     }
 
-    // Use top 10 comps for median calculation
-    const comps = (avmData.comparables || []).slice(0, 10)
-    const compPrices = comps.map((c: { price: number }) => c.price).filter((p: number) => p > 0)
-
-    if (compPrices.length === 0) {
+    // Step 2: Get Census median for the ZIP
+    const censusData = await getCensusMedian(geocode.zip)
+    if (!censusData) {
       return NextResponse.json(
-        { error: 'No comparable sales found for this address' },
+        { error: `No Census data available for ZIP ${geocode.zip}. Try a different address.` },
         { status: 404 }
       )
     }
 
-    // Calculate median from comps
-    const sortedPrices = [...compPrices].sort((a: number, b: number) => a - b)
-    const median = sortedPrices.length % 2 === 0
-      ? (sortedPrices[sortedPrices.length / 2 - 1] + sortedPrices[sortedPrices.length / 2]) / 2
-      : sortedPrices[Math.floor(sortedPrices.length / 2)]
+    // Step 3: Build the response
+    // Listing price can come from:
+    // - Query param (manual entry or MLS integration)
+    // - Future: scraping integration
+    const listingPrice = listingPriceParam ? parseInt(listingPriceParam) : null
 
-    const estimatedValue = avmData.price
+    const median = censusData.median
 
-    // The KEY comparison: use listing price if available, otherwise AVM estimate
-    const propertyPrice = listingPrice || estimatedValue
-    const position = propertyPrice < median ? 'progression' : 'regression'
-    const percentage = Math.abs(((propertyPrice - median) / median) * 100)
+    // Use listing price for position calculation if available
+    const comparePrice = listingPrice
+    const position = comparePrice && comparePrice < median ? 'progression' : 
+                     comparePrice && comparePrice > median ? 'regression' : null
+    const percentage = comparePrice 
+      ? Math.round(Math.abs(((comparePrice - median) / median) * 100) * 10) / 10
+      : 0
 
-    // Calculate the listing vs market gap (the real golden opportunity signal)
+    // Listing gap (the Golden Opportunity signal)
     let listingGap = null
-    if (listingPrice && listingPrice !== estimatedValue) {
-      const gapAmount = estimatedValue - listingPrice
-      const gapPercent = Math.abs((gapAmount / estimatedValue) * 100)
+    if (listingPrice && median) {
+      const gapAmount = median - listingPrice
+      const gapPercent = Math.abs((gapAmount / median) * 100)
       listingGap = {
         listingPrice,
-        estimatedValue,
+        neighborhoodMedian: median,
         difference: gapAmount,
         percentBelow: gapAmount > 0 ? Math.round(gapPercent * 10) / 10 : 0,
         percentAbove: gapAmount < 0 ? Math.round(gapPercent * 10) / 10 : 0,
         signal: gapAmount > 0 ? 'underpriced' : 'overpriced',
-        listingStatus,
-        listedDate,
-        daysOnMarket,
       }
     }
 
-    const sub = avmData.subjectProperty || {}
-
     const response = {
       property: {
-        address: sub.formattedAddress || address,
-        estimatedValue,
-        listingPrice: listingPrice || null,
-        priceRangeLow: avmData.priceRangeLow,
-        priceRangeHigh: avmData.priceRangeHigh,
-        bedrooms: sub.bedrooms,
-        bathrooms: sub.bathrooms,
-        squareFootage: sub.squareFootage,
-        yearBuilt: sub.yearBuilt,
-        propertyType: sub.propertyType,
+        address: geocode.matchedAddress,
+        listingPrice,
+        city: geocode.city,
+        state: geocode.state,
+        zip: geocode.zip,
+        county: geocode.county || null,
+        propertyType: inferPropertyType(address),
+        lat: geocode.lat,
+        lon: geocode.lon,
       },
-      comps: comps.slice(0, 5).map((comp: {
-        formattedAddress: string
-        price: number
-        removedDate?: string
-        listedDate?: string
-        bedrooms?: number
-        bathrooms?: number
-        squareFootage?: number
-        distance?: number
-        correlation?: number
-      }) => ({
-        address: comp.formattedAddress,
-        price: comp.price,
-        date: comp.removedDate || comp.listedDate || 'Unknown',
-        bedrooms: comp.bedrooms,
-        bathrooms: comp.bathrooms,
-        squareFootage: comp.squareFootage,
-        distance: comp.distance ? Math.round(comp.distance * 100) / 100 : null,
-        correlation: comp.correlation ? Math.round(comp.correlation * 100) : null,
-      })),
-      median: Math.round(median),
-      position,
-      percentage: Math.round(percentage * 10) / 10,
+      neighborhood: {
+        median: censusData.median,
+        marginOfError: censusData.marginOfError,
+        rangeLow: censusData.rangeLow,
+        rangeHigh: censusData.rangeHigh,
+        population: censusData.population || null,
+        medianRent: censusData.medianRent || null,
+        zipCode: censusData.zipCode,
+        source: 'U.S. Census Bureau ACS 5-Year Estimates (2023)',
+      },
+      position: position || 'unknown',
+      percentage,
       listingGap,
+      dataSource: 'free',
     }
 
     return NextResponse.json(response)

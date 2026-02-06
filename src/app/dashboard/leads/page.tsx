@@ -1185,6 +1185,42 @@ export default function LeadsPage() {
                   </div>
                 </div>
 
+                {/* Quick Action Buttons */}
+                {(lead.phone || lead.email) && (
+                  <div className="flex items-center gap-2 mt-3">
+                    {lead.phone && (
+                      <>
+                        <a
+                          href={`tel:${lead.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          title="Call"
+                        >
+                          📞 Call
+                        </a>
+                        <a
+                          href={`sms:${lead.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          title="Text"
+                        >
+                          💬 Text
+                        </a>
+                      </>
+                    )}
+                    {lead.email && (
+                      <a
+                        href={`mailto:${lead.email}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        title="Email"
+                      >
+                        📧 Email
+                      </a>
+                    )}
+                  </div>
+                )}
+
                 {/* Expanded Notes Section */}
                 {isExpanded && (
                   <div className="mt-4 pt-4 border-t border-dark-border space-y-3">

@@ -1979,6 +1979,29 @@ export default function LeadsPage() {
                       </div>
                     )}
 
+                    {/* Add new note — at the top */}
+                    <div className="flex gap-2 mb-4">
+                      <textarea
+                        value={newNoteContent}
+                        onChange={(e) => setNewNoteContent(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                            saveLeadNote()
+                          }
+                        }}
+                        className="flex-1 bg-white/[0.04] border border-white/10 rounded-lg p-3 text-white text-base resize-none focus:outline-none focus:border-amber-500 transition-colors"
+                        placeholder="Add a note..."
+                        rows={2}
+                      />
+                      <button
+                        onClick={saveLeadNote}
+                        disabled={!newNoteContent.trim()}
+                        className="bg-amber-500 text-black font-semibold rounded-lg px-4 h-11 self-end hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Save
+                      </button>
+                    </div>
+
                     {/* Timeline */}
                     <div className="relative pl-5 mb-4">
                       {/* Timeline line */}
@@ -1987,7 +2010,7 @@ export default function LeadsPage() {
                       {loadingNotes ? (
                         <div className="text-center py-4 text-gray-500 text-sm">Loading notes...</div>
                       ) : leadNotes.length === 0 ? (
-                        <div className="text-center py-4 text-gray-500 text-sm">No notes yet. Add one below!</div>
+                        <div className="text-center py-4 text-gray-500 text-sm">No notes yet!</div>
                       ) : (
                         <>
                           {leadNotes.map((note, index) => {
@@ -2013,32 +2036,24 @@ export default function LeadsPage() {
                                 {/* Note content card */}
                                 <div className="bg-white/[0.03] border border-white/[0.05] rounded-lg px-3 py-2.5 relative group">
                                   {editingNoteId === note.id ? (
-                                    <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col p-4 md:relative md:inset-auto md:z-auto md:bg-transparent md:p-0">
-                                      <div className="flex items-center justify-between mb-3 md:hidden">
-                                        <span className="text-sm text-gray-400 font-semibold">Edit Note</span>
-                                        <button
-                                          onClick={() => { setEditingNoteId(null); setEditingNoteContent(''); }}
-                                          className="text-gray-400 hover:text-white text-lg"
-                                        >✕</button>
-                                      </div>
+                                    <div>
                                       <textarea
                                         value={editingNoteContent}
                                         onChange={(e) => setEditingNoteContent(e.target.value)}
-                                        className="w-full flex-1 md:flex-none bg-white/[0.04] border border-amber-500/30 rounded-lg p-3 text-sm text-white resize-none focus:outline-none focus:border-amber-500"
-                                        rows={12}
-                                        style={{ minHeight: '60vh' }}
+                                        className="w-full bg-white/[0.04] border border-amber-500/30 rounded-lg p-3 text-sm text-white resize-none focus:outline-none focus:border-amber-500"
+                                        rows={8}
                                         autoFocus
                                       />
                                       <div className="flex gap-2 mt-2">
                                         <button
                                           onClick={() => updateLeadNote(note.id, editingNoteContent)}
-                                          className="px-3 py-1 bg-amber-500 text-black text-xs font-semibold rounded-md hover:bg-amber-600"
+                                          className="px-3 py-1.5 bg-amber-500 text-black text-xs font-semibold rounded-md hover:bg-amber-600"
                                         >
                                           Save
                                         </button>
                                         <button
                                           onClick={() => { setEditingNoteId(null); setEditingNoteContent(''); }}
-                                          className="px-3 py-1 bg-white/5 text-gray-400 text-xs rounded-md hover:bg-white/10"
+                                          className="px-3 py-1.5 bg-white/5 text-gray-400 text-xs rounded-md hover:bg-white/10"
                                         >
                                           Cancel
                                         </button>
@@ -2082,28 +2097,7 @@ export default function LeadsPage() {
                       )}
                     </div>
 
-                    {/* Add new note */}
-                    <div className="flex gap-2 mt-4">
-                      <textarea
-                        value={newNoteContent}
-                        onChange={(e) => setNewNoteContent(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                            saveLeadNote()
-                          }
-                        }}
-                        className="flex-1 bg-white/[0.04] border border-white/10 rounded-lg p-3 text-white text-base resize-none focus:outline-none focus:border-amber-500 transition-colors"
-                        placeholder="Add a note..."
-                        rows={2}
-                      />
-                      <button
-                        onClick={saveLeadNote}
-                        disabled={!newNoteContent.trim()}
-                        className="bg-amber-500 text-black font-semibold rounded-lg px-4 h-11 self-end hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Save
-                      </button>
-                    </div>
+                    {/* Tip */}
                     <p className="text-xs text-gray-600 mt-1">Tip: Press ⌘+Enter to save quickly</p>
                   </div>
                 </div>

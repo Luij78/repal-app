@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Lead, Task } from '@/types/database'
 import CsvImportModal from '@/components/CsvImportModal'
 import NeighborhoodPosition from '@/components/NeighborhoodPosition'
+import Toast from '@/components/Toast'
 
 const priorityDescriptions: Record<number, string> = {
   1: '🔥 Buying in 1-2 months',
@@ -392,6 +393,7 @@ function LeadsPageInner() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [viewTab, setViewTab] = useState<'overview' | 'activity' | 'tasks'>('overview')
   const [importStatus, setImportStatus] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success')
   const [showImportModal, setShowImportModal] = useState(false)
   const notesScrollRef = useRef<HTMLDivElement>(null)
     const editNotesRef = useRef<HTMLTextAreaElement>(null)
@@ -478,13 +480,13 @@ function LeadsPageInner() {
     
     if (error) {
       console.error('Error saving note:', error)
+      setToastType('error')
       setImportStatus('Failed to save note')
-      setTimeout(() => setImportStatus(''), 2000)
     } else {
       setLeadNotes([data, ...leadNotes])
       setNewNoteContent('')
+      setToastType('success')
       setImportStatus('Note saved!')
-      setTimeout(() => setImportStatus(''), 2000)
     }
   }
 
@@ -721,8 +723,12 @@ function LeadsPageInner() {
 
       if (error) {
         console.error('Error updating lead:', error)
+        setToastType('error')
+        setImportStatus('Failed to update lead')
       } else {
         setLeads(leads.map(l => l.id === editingLead.id ? { ...l, ...leadData } : l))
+        setToastType('success')
+        setImportStatus('Lead updated successfully!')
         resetForm()
       }
     } else {
@@ -734,8 +740,12 @@ function LeadsPageInner() {
 
       if (error) {
         console.error('Error adding lead:', error)
+        setToastType('error')
+        setImportStatus('Failed to add lead')
       } else if (data) {
         setLeads([data, ...leads])
+        setToastType('success')
+        setImportStatus('Lead added successfully!')
         resetForm()
       }
     }
@@ -828,11 +838,11 @@ function LeadsPageInner() {
   const copyQuickMessage = async (message: string) => {
     try {
       await navigator.clipboard.writeText(message)
-      setImportStatus('✓ Copied!')
-      setTimeout(() => setImportStatus(''), 2000)
+      setToastType('success')
+      setImportStatus('Copied to clipboard!')
     } catch {
+      setToastType('error')
       setImportStatus('Failed to copy')
-      setTimeout(() => setImportStatus(''), 2000)
     }
   }
 
@@ -983,8 +993,11 @@ function LeadsPageInner() {
         setSelectedLead({ ...selectedLead, notes: newNote })
       }
       setAiResponse(null)
+      setToastType('success')
       setImportStatus('Added to notes!')
-      setTimeout(() => setImportStatus(''), 2000)
+    } else {
+      setToastType('error')
+      setImportStatus('Failed to save note')
     }
   }
 
@@ -1035,11 +1048,13 @@ function LeadsPageInner() {
         </div>
       </div>
 
-      {/* Import Status Toast */}
+      {/* Toast Notification */}
       {importStatus && (
-        <div className="fixed top-4 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg z-50 animate-fade-in">
-          {importStatus}
-        </div>
+        <Toast 
+          message={importStatus} 
+          type={toastType}
+          onClose={() => setImportStatus('')} 
+        />
       )}
 
       {/* Filters */}
@@ -1841,9 +1856,14 @@ function LeadsPageInner() {
                           )}
                           <button
                             onClick={async () => {
-                              await navigator.clipboard.writeText(aiResponse)
-                              setImportStatus('Copied!')
-                              setTimeout(() => setImportStatus(''), 2000)
+                              try {
+                                await navigator.clipboard.writeText(aiResponse)
+                                setToastType('success')
+                                setImportStatus('Copied to clipboard!')
+                              } catch {
+                                setToastType('error')
+                                setImportStatus('Failed to copy')
+                              }
                             }}
                             className="flex-1 px-2 py-1.5 bg-purple-500/20 text-purple-400 rounded text-xs hover:bg-purple-500/30"
                           >

@@ -297,9 +297,9 @@ export default function DashboardPage() {
           <div className="mt-6 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-dark-bg/50 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-white">{stats.todayAppointments}</p><p className="text-xs text-gray-400">Today's Appts</p></div>
-              <div className="bg-dark-bg/50 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-yellow-400">{stats.needFollowup}</p><p className="text-xs text-gray-400">Need Follow-up</p></div>
-              <div className="bg-dark-bg/50 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-red-400">{stats.overdueTasks}</p><p className="text-xs text-gray-400">Overdue Tasks</p></div>
-              <div className="bg-dark-bg/50 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-green-400">{stats.hotLeads}</p><p className="text-xs text-gray-400">Hot Leads</p></div>
+              <Link href="/dashboard/leads?filter=followup" onClick={(e) => e.stopPropagation()} className="bg-dark-bg/50 rounded-lg p-3 text-center hover:bg-dark-bg/80 transition-colors"><p className="text-2xl font-bold text-yellow-400">{stats.needFollowup}</p><p className="text-xs text-gray-400">Need Follow-up</p></Link>
+              <Link href="/dashboard/tasker" onClick={(e) => e.stopPropagation()} className="bg-dark-bg/50 rounded-lg p-3 text-center hover:bg-dark-bg/80 transition-colors"><p className="text-2xl font-bold text-red-400">{stats.overdueTasks}</p><p className="text-xs text-gray-400">Overdue Tasks</p></Link>
+              <Link href="/dashboard/leads?filter=hot" onClick={(e) => e.stopPropagation()} className="bg-dark-bg/50 rounded-lg p-3 text-center hover:bg-dark-bg/80 transition-colors"><p className="text-2xl font-bold text-green-400">{stats.hotLeads}</p><p className="text-xs text-gray-400">Hot Leads</p></Link>
             </div>
             {insights.length > 0 ? (
               <div className="space-y-2">

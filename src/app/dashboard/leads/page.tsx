@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -368,6 +368,14 @@ function PricePicker({ value, onChange, placeholder = 'Select' }: PricePickerPro
 }
 
 export default function LeadsPage() {
+  return (
+    <Suspense fallback={<div className="animate-fade-in"><div className="card text-center py-12"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-4" /><p className="text-gray-400">Loading leads...</p></div></div>}>
+      <LeadsPageInner />
+    </Suspense>
+  )
+}
+
+function LeadsPageInner() {
   const { user } = useUser()
   const searchParams = useSearchParams()
   const [leads, setLeads] = useState<Lead[]>([])
@@ -640,6 +648,13 @@ export default function LeadsPage() {
       if (leadParam && data) {
         const target = data.find((l: Lead) => l.id === leadParam)
         if (target) setSelectedLead(target)
+      }
+      // Auto-set filter from URL param (e.g. ?filter=followup from Dashboard)
+      const filterParam = searchParams.get('filter')
+      if (filterParam === 'followup') {
+        setFilterFollowupToday(true)
+      } else if (filterParam === 'hot') {
+        setFilterStatus('hot')
       }
     }
     setLoading(false)
@@ -987,7 +1002,7 @@ export default function LeadsPage() {
       (filterPriority === 'hot' && (lead.priority || 5) <= 3) ||
       (filterPriority === 'warm' && (lead.priority || 5) >= 4 && (lead.priority || 5) <= 6) ||
       (filterPriority === 'cold' && (lead.priority || 5) >= 7)
-    const matchesFollowup = !filterFollowupToday || lead.follow_up_date === today
+    const matchesFollowup = !filterFollowupToday || (lead.follow_up_date != null && lead.follow_up_date <= today && lead.status !== 'closed' && lead.status !== 'lost')
     return matchesSearch && matchesStatus && matchesPriority && matchesFollowup
   }).sort((a, b) => (a.priority || 10) - (b.priority || 10))
 

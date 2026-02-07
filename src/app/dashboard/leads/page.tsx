@@ -393,9 +393,6 @@ function LeadsPageInner() {
   const [viewTab, setViewTab] = useState<'overview' | 'activity' | 'tasks'>('overview')
   const [importStatus, setImportStatus] = useState('')
   const [showImportModal, setShowImportModal] = useState(false)
-  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null)
-  const [inlineNotes, setInlineNotes] = useState('')
-  const [inlinePriority, setInlinePriority] = useState(5)
   const notesScrollRef = useRef<HTMLDivElement>(null)
     const editNotesRef = useRef<HTMLTextAreaElement>(null)
     const editModalRef = useRef<HTMLDivElement>(null)
@@ -560,8 +557,6 @@ function LeadsPageInner() {
             .order('due_date', { ascending: true })
           setLeadTasks(taskData || [])
         })()
-        setInlineNotes(selectedLead.notes || '')
-        setInlinePriority(selectedLead.priority || 5)
       } else {
         setLeadNotes([])
         setNewNoteContent('')
@@ -747,6 +742,9 @@ function LeadsPageInner() {
   }
 
   const editLead = (lead: Lead) => {
+    // Clear selectedLead first to avoid dual modal conflict
+    setSelectedLead(null)
+    
     // Split name into first/last
     const nameParts = lead.name.split(' ')
     const firstName = nameParts[0] || ''
@@ -777,7 +775,6 @@ function LeadsPageInner() {
       home_anniversary: lead.home_anniversary || '',
     })
     setEditingLead(lead)
-    setSelectedLead(null)
     setShowAddModal(true)
   }
 
@@ -1161,27 +1158,14 @@ function LeadsPageInner() {
           {filteredLeads.map(lead => {
             const priority = lead.priority || 5
             const priorityColors = getPriorityColor(priority)
-            const isExpanded = expandedLeadId === lead.id
             return (
               <div
                 key={lead.id}
                 onClick={() => {
                   setSelectedLead(lead)
                 }}
-                className={`relative card transition-all cursor-pointer hover:border-primary-500/30 pr-12 ${isExpanded ? 'border-primary-500/50' : ''}`}
+                className="relative card transition-all cursor-pointer hover:border-primary-500/30"
               >
-                {/* Edit Pencil - Top Right */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditingLead(lead)
-                  }}
-                  className="absolute top-3 right-3 text-gray-500 hover:text-primary-500 p-1.5 rounded-lg hover:bg-primary-500/10 transition-colors text-sm z-10"
-                  title="Edit lead"
-                >
-                  ✏️
-                </button>
-
                 {/* Lead Header Row */}
                 <div className="flex items-center gap-3">
                   {/* Avatar with Initials + Gradient */}
@@ -1264,153 +1248,6 @@ function LeadsPageInner() {
                         📧 Email
                       </a>
                     )}
-                  </div>
-                )}
-
-                {/* Expanded Notes Section */}
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-dark-border space-y-3">
-                    {/* AI Buttons */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => generateAiFollowup(lead)}
-                        disabled={aiLoading !== null}
-                        className="px-3 py-1.5 bg-dark-border text-gray-300 rounded-lg text-sm hover:bg-dark-border/80 transition-colors flex items-center gap-1 disabled:opacity-50"
-                      >
-                        {aiLoading === 'followup' ? '⏳' : '📁'} AI Follow-up
-                      </button>
-                      <button
-                        onClick={() => generateAiRewrite(lead)}
-                        disabled={aiLoading !== null}
-                        className="px-3 py-1.5 bg-dark-border text-gray-300 rounded-lg text-sm hover:bg-dark-border/80 transition-colors flex items-center gap-1 disabled:opacity-50"
-                      >
-                        {aiLoading === 'rewrite' ? '⏳' : '✨'} AI Rewrite
-                      </button>
-                      {isSupported && (
-                        <button
-                          onClick={toggleListening}
-                          className={`px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1 ${
-                            isListening ? 'bg-orange-500 text-white' : 'bg-dark-border text-gray-300 hover:bg-dark-border/80'
-                          }`}
-                        >
-                          🎤 Voice
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          const now = new Date()
-                          const timestamp = `\n\n[${now.toLocaleDateString('en-US')} ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}] `
-                          setInlineNotes(prev => prev ? prev.trimEnd() + timestamp : timestamp.trim())
-                        }}
-                        className="px-3 py-1.5 bg-teal-500/20 text-teal-400 rounded-lg text-sm hover:bg-teal-500/30 transition-colors flex items-center gap-1 border border-teal-500/30"
-                      >
-                        ⏱️ Add Timestamp
-                      </button>
-                    </div>
-
-                    {/* AI Response */}
-                    {aiResponse && (
-                      <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-purple-400 text-xs font-semibold">AI Response</p>
-                          <button onClick={() => setAiResponse(null)} className="text-gray-400 hover:text-white text-xs">✕</button>
-                        </div>
-                        <p className="text-white text-sm whitespace-pre-wrap mb-2">{aiResponse}</p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={async () => {
-                              await navigator.clipboard.writeText(aiResponse)
-                              setImportStatus('Copied!')
-                              setTimeout(() => setImportStatus(''), 2000)
-                            }}
-                            className="flex-1 px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs hover:bg-purple-500/30"
-                          >
-                            Copy
-                          </button>
-                          <button
-                            onClick={() => {
-                              const now = new Date()
-                              const timestamp = `[${now.toLocaleDateString('en-US')} @ ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}] `
-                              setInlineNotes(prev => prev ? prev.trimEnd() + '\n\n' + timestamp + aiResponse : timestamp + aiResponse)
-                              setAiResponse(null)
-                            }}
-                            className="flex-1 px-2 py-1 bg-teal-500/20 text-teal-400 rounded text-xs hover:bg-teal-500/30"
-                          >
-                            Add to Notes
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notes Textarea */}
-                    <textarea
-                      value={inlineNotes}
-                      onChange={(e) => setInlineNotes(e.target.value)}
-                      className="input-field w-full font-mono text-sm"
-                      rows={5}
-                      placeholder="[1/27/2026 @ 9:00 AM] Met at open house..."
-                    />
-
-                    {/* Priority Selector - Below Notes */}
-                    <div className="pt-2">
-                      <label className="block text-gray-400 text-sm mb-2">Priority (1 = Hottest, 10 = Coldest)</label>
-                      <div className="flex gap-1 flex-wrap">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => {
-                          const colors = getPriorityColor(num)
-                          const isSelected = inlinePriority === num
-                          return (
-                            <button
-                              key={num}
-                              type="button"
-                              onClick={() => setInlinePriority(num)}
-                              className={`w-8 h-8 rounded-lg font-semibold transition-all text-sm ${
-                                isSelected 
-                                  ? `${colors.bg} ${colors.text} ${colors.border} border-2` 
-                                  : 'bg-dark-border text-gray-400 hover:text-white border border-transparent'
-                              }`}
-                            >
-                              {num}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">{priorityDescriptions[inlinePriority]}</p>
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button
-                        onClick={() => {
-                          setExpandedLeadId(null)
-                          setInlineNotes('')
-                          setInlinePriority(5)
-                          setAiResponse(null)
-                        }}
-                        className="px-4 py-2 text-gray-400 hover:text-white text-sm"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={async () => {
-                          const { error } = await supabase
-                            .from('leads')
-                            .update({ notes: inlineNotes, priority: inlinePriority })
-                            .eq('id', lead.id)
-                          if (!error) {
-                            setLeads(leads.map(l => l.id === lead.id ? { ...l, notes: inlineNotes, priority: inlinePriority } : l))
-                            setExpandedLeadId(null)
-                            setInlineNotes('')
-                            setInlinePriority(5)
-                            setAiResponse(null)
-                            setImportStatus('Saved!')
-                            setTimeout(() => setImportStatus(''), 2000)
-                          }
-                        }}
-                        className="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors"
-                      >
-                        💾 Save
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>
@@ -1803,7 +1640,7 @@ function LeadsPageInner() {
       {selectedLead && (
         <div 
           className="modal-panel-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget) { setSelectedLead(null); setAiResponse(null); setInlineNotes(''); setInlinePriority(5); setViewTab('overview'); }}}
+          onClick={(e) => { if (e.target === e.currentTarget) { setSelectedLead(null); setAiResponse(null); setViewTab('overview'); }}}
         >
           <div className="modal-panel">
             {/* Header */}
@@ -1826,7 +1663,7 @@ function LeadsPageInner() {
                 </div>
               </div>
               <button 
-                onClick={() => { setSelectedLead(null); setAiResponse(null); setInlineNotes(''); setInlinePriority(5); setViewTab('overview'); }} 
+                onClick={() => { setSelectedLead(null); setAiResponse(null); setViewTab('overview'); }} 
                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
               >
                 ✕
@@ -2267,7 +2104,7 @@ function LeadsPageInner() {
               </button>
               <div className="flex-1" />
                 <button 
-                  onClick={() => { setSelectedLead(null); setAiResponse(null); setInlineNotes(''); setInlinePriority(5); setViewTab('overview'); setLeadNotes([]); setNewNoteContent(''); setLeadTasks([]); setShowAddTask(false); setNewTaskTitle(''); }} 
+                  onClick={() => { setSelectedLead(null); setAiResponse(null); setViewTab('overview'); setLeadNotes([]); setNewNoteContent(''); setLeadTasks([]); setShowAddTask(false); setNewTaskTitle(''); }} 
                   className="px-4 py-2.5 bg-white/5 text-gray-300 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
                 >
                   Close

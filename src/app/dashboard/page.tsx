@@ -238,7 +238,7 @@ export default function DashboardPage() {
     }
     const needFollowup = getLeadsNeedingFollowup()
     if (needFollowup.length > 0) {
-      insights.push({ type: 'suggestion', icon: '📞', title: `${needFollowup.length} Lead${needFollowup.length > 1 ? 's' : ''} Need Follow-up`, description: `${needFollowup[0].name} - scheduled for ${needFollowup[0].follow_up_date}`, action: 'View Leads', link: '/dashboard/leads' })
+      insights.push({ type: 'suggestion', icon: '📞', title: `${needFollowup.length} Lead${needFollowup.length > 1 ? 's' : ''} Need Follow-up`, description: `${needFollowup[0].name} - scheduled for ${needFollowup[0].follow_up_date}`, action: 'View Leads', link: '/dashboard/leads?filter=followup' })
     }
     const hotLeads = getHotLeads()
     if (hotLeads.length > 0) {

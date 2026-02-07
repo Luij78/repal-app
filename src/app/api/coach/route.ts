@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 1024,
       system: `You are REPal Coach, an expert real estate coaching assistant. You provide practical, actionable advice for real estate agents.
 

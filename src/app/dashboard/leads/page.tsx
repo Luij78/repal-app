@@ -928,18 +928,36 @@ function LeadsPageInner() {
 
   // AI Follow-up: Generate a follow-up message based on notes
   const generateAiFollowup = async (lead: Lead) => {
-    if (!lead.notes) {
+    if (leadNotes.length === 0) {
       setAiResponse('No notes to base follow-up on. Add some notes first!')
       return
     }
     setAiLoading('followup')
     setAiResponse(null)
     try {
+      // Format notes with timestamps for context
+      const formattedNotes = leadNotes
+        .slice(0, 5) // Use most recent 5 notes
+        .map(note => {
+          const date = new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          return `[${date}] ${note.content}`
+        })
+        .join('\n')
+      
+      // Build context string with lead details
+      const context = [
+        `Name: ${lead.name}`,
+        lead.preferred_area ? `Location: ${lead.preferred_area}` : '',
+        (lead.budget_min || lead.budget_max) ? `Budget: ${formatCurrency(lead.budget_min) || '?'} - ${formatCurrency(lead.budget_max) || '?'}` : '',
+        lead.property_interest ? `Property Interest: ${lead.property_interest}` : '',
+        lead.follow_up_date ? `Follow-up Date: ${formatDate(lead.follow_up_date)}` : ''
+      ].filter(Boolean).join(', ')
+      
       const response = await fetch('/api/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          question: `Based on these notes about my client ${lead.name}, write ONLY the text message itself (2-3 sentences max). Be warm and professional. DO NOT include any introduction, title, or preamble like "Here's a message". DO NOT use any emojis. Just write the actual message to send. Notes: ${lead.notes}`
+          question: `Generate a ready-to-send follow-up text message for this client. Context: ${context}. Recent notes: ${formattedNotes}. Write ONLY the text message (2-3 sentences). Warm, professional, no emojis.`
         })
       })
       const data = await response.json()
@@ -1835,6 +1853,22 @@ function LeadsPageInner() {
                       </div>
                     </div>
 
+                    {/* Overdue Follow-up Banner */}
+                    {selectedLead.follow_up_date && new Date(selectedLead.follow_up_date) < new Date() && (
+                      <div 
+                        onClick={() => generateAiFollowup(selectedLead)}
+                        className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg cursor-pointer hover:bg-amber-500/15 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-400 text-lg">⚠️</span>
+                          <div className="flex-1">
+                            <p className="text-amber-400 text-sm font-semibold">Follow-up overdue since {formatDate(selectedLead.follow_up_date)}</p>
+                            <p className="text-amber-300/70 text-xs mt-0.5">Tap to generate message</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* AI Response */}
                     {aiResponse && (
                       <div className="p-3 mb-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
@@ -1964,7 +1998,27 @@ function LeadsPageInner() {
                                     </div>
                                   ) : (
                                     <>
-                                      <p className="text-sm text-gray-300 leading-relaxed pr-6">{note.content}</p>
+                                      <p className="text-sm text-gray-300 leading-relaxed pr-14">{note.content}</p>
+                                      {/* Copy icon - always visible */}
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation()
+                                          try {
+                                            await navigator.clipboard.writeText(note.content)
+                                            setToastType('success')
+                                            setImportStatus('Copied to clipboard!')
+                                          } catch {
+                                            setToastType('error')
+                                            setImportStatus('Failed to copy')
+                                          }
+                                        }}
+                                        className="absolute top-2 right-8 w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-all"
+                                        title="Copy note"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      </button>
                                       {/* 3-dot menu */}
                                       <div className="absolute top-2 right-2">
                                         <button

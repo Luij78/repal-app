@@ -846,10 +846,14 @@ function LeadsPageInner() {
     }
   }
 
-  const sendQuickMessage = (lead: Lead, message: string) => {
+  const sendQuickMessage = async (lead: Lead, message: string) => {
     const phone = lead.phone?.replace(/\D/g, '')
+    // Copy to clipboard first (iOS doesn't decode sms: body param properly)
+    try { await navigator.clipboard.writeText(message) } catch {}
     if (phone) {
-      window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_blank')
+      window.open(`sms:${phone}`, '_blank')
+      setToastType('success')
+      setImportStatus('Message copied — paste it in the text!')
     } else if (lead.email) {
       window.open(`mailto:${lead.email}?subject=${encodeURIComponent('Following Up')}&body=${encodeURIComponent(message)}`, '_blank')
     }
@@ -1887,8 +1891,11 @@ function LeadsPageInner() {
                         <div className="flex gap-2">
                           {selectedLead.phone && (
                             <button
-                              onClick={() => {
-                                window.open(`sms:${selectedLead.phone}?body=${encodeURIComponent(aiResponse)}`, '_blank')
+                              onClick={async () => {
+                                try { await navigator.clipboard.writeText(aiResponse) } catch {}
+                                window.open(`sms:${selectedLead.phone}`, '_blank')
+                                setToastType('success')
+                                setImportStatus('Message copied — paste it in the text!')
                               }}
                               className="flex-1 px-2 py-1.5 bg-blue-500/20 text-blue-400 rounded text-xs hover:bg-blue-500/30 font-medium"
                             >

@@ -37,10 +37,12 @@ Keep responses focused and under 300 words unless more detail is needed.`,
     const advice = message.content[0].type === 'text' ? message.content[0].text : 'Unable to generate advice'
 
     return NextResponse.json({ advice })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Coach API error:', error)
+    const msg = error?.message || error?.toString() || 'Unknown error'
+    const hasKey = !!process.env.ANTHROPIC_API_KEY
     return NextResponse.json(
-      { error: 'Failed to get coaching advice' },
+      { error: 'Failed to get coaching advice', detail: msg, keyPresent: hasKey },
       { status: 500 }
     )
   }

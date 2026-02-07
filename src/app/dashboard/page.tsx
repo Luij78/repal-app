@@ -100,10 +100,12 @@ export default function DashboardPage() {
     const savedOrder = localStorage.getItem('repal_tile_order')
     const savedHidden = localStorage.getItem('repal_hidden_tiles')
     const savedGroups = localStorage.getItem('repal_enabled_groups')
+    const savedDigest = localStorage.getItem('repal_digest_expanded')
     if (savedOrder) setTileOrder(JSON.parse(savedOrder))
     else setTileOrder(allTools.map(t => t.id))
     if (savedHidden) setHiddenTiles(JSON.parse(savedHidden))
     if (savedGroups) setEnabledGroups(JSON.parse(savedGroups))
+    if (savedDigest !== null) setDigestExpanded(JSON.parse(savedDigest))
     const timer = setInterval(() => setCurrentTime(new Date()), 60000)
     return () => clearInterval(timer)
   }, [user])
@@ -119,6 +121,10 @@ export default function DashboardPage() {
   useEffect(() => {
     localStorage.setItem('repal_enabled_groups', JSON.stringify(enabledGroups))
   }, [enabledGroups])
+  
+  useEffect(() => {
+    localStorage.setItem('repal_digest_expanded', JSON.stringify(digestExpanded))
+  }, [digestExpanded])
 
   const loadData = async () => {
     if (!user) return

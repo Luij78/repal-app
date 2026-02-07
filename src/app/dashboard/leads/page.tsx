@@ -1060,11 +1060,19 @@ function LeadsPageInner() {
         >
           <option value="all">All Status</option>
           <option value="new">New</option>
-          <option value="contacted">Contacted</option>
-          <option value="qualified">Qualified</option>
-          <option value="negotiating">Negotiating</option>
-          <option value="closed">Closed</option>
-          <option value="lost">Lost</option>
+          <option value="hot">🔥 Hot</option>
+          <option value="nurture">Nurture</option>
+          <option value="watch">Watch</option>
+          <option value="pending">Pending</option>
+          <option value="past_client">Past Client</option>
+          <option value="inactive">Inactive</option>
+          <option value="unqualified">Unqualified</option>
+          <option value="archived">Archived</option>
+          <option value="contacted">Contacted (Legacy)</option>
+          <option value="qualified">Qualified (Legacy)</option>
+          <option value="negotiating">Negotiating (Legacy)</option>
+          <option value="closed">Closed (Legacy)</option>
+          <option value="lost">Lost (Legacy)</option>
         </select>
         <select
           value={filterPriority}
@@ -1148,9 +1156,14 @@ function LeadsPageInner() {
             {searchTerm || filterStatus !== 'all' || filterPriority !== 'all' ? 'No leads match your filters' : 'No leads yet'}
           </p>
           {!searchTerm && filterStatus === 'all' && filterPriority === 'all' && (
-            <button onClick={() => setShowAddModal(true)} className="btn-primary">
-              Add Your First Lead
-            </button>
+            <>
+              <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+                Add leads from open houses, referrals, or import a CSV to get started tracking your contacts
+              </p>
+              <button onClick={() => setShowAddModal(true)} className="btn-primary">
+                Add Your First Lead
+              </button>
+            </>
           )}
         </div>
       ) : (
@@ -1223,7 +1236,7 @@ function LeadsPageInner() {
                         <a
                           href={`tel:${lead.phone}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          className="text-xs px-3 py-2 rounded-lg bg-green-500/15 hover:bg-green-500/25 text-green-400 hover:text-green-300 transition-colors font-medium border border-green-500/30"
                           title="Call"
                         >
                           📞 Call
@@ -1231,7 +1244,7 @@ function LeadsPageInner() {
                         <a
                           href={`sms:${lead.phone}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          className="text-xs px-3 py-2 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 hover:text-blue-300 transition-colors font-medium border border-blue-500/30"
                           title="Text"
                         >
                           💬 Text
@@ -1242,7 +1255,7 @@ function LeadsPageInner() {
                       <a
                         href={`mailto:${lead.email}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        className="text-xs px-3 py-2 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 hover:text-purple-300 transition-colors font-medium border border-purple-500/30"
                         title="Email"
                       >
                         📧 Email
@@ -1300,7 +1313,7 @@ function LeadsPageInner() {
               <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5">Contact Info</div>
               
               {/* Name */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">First Name <span className="text-red-400">*</span></label>
                   <input
@@ -1324,7 +1337,7 @@ function LeadsPageInner() {
               </div>
 
               {/* Email */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">📧 Personal Email</label>
                   <input
@@ -1348,7 +1361,7 @@ function LeadsPageInner() {
               </div>
 
               {/* Phone */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">📱 Mobile</label>
                   <input
@@ -1375,7 +1388,7 @@ function LeadsPageInner() {
               <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Status & Priority</div>
               
               {/* Status / Intent / Stage Row */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Status</label>
                   <select
@@ -1450,7 +1463,7 @@ function LeadsPageInner() {
               <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Property Preferences</div>
               
               {/* Area & Follow-up */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">Preferred Area</label>
                   <input
@@ -1473,7 +1486,7 @@ function LeadsPageInner() {
               </div>
 
                 {/* Budget */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-400 text-sm mb-1">Budget Min</label>
                     <PricePicker
@@ -1508,7 +1521,7 @@ function LeadsPageInner() {
               <div className="text-xs uppercase tracking-wider text-gray-600 mb-3 pb-2 border-b border-white/5 mt-6">Lead Details</div>
               
               {/* Birthday & Anniversary */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-1">🎂 Birthday</label>
                   <input
@@ -1816,6 +1829,16 @@ function LeadsPageInner() {
                         </div>
                         <p className="text-white text-sm whitespace-pre-wrap mb-2">{aiResponse}</p>
                         <div className="flex gap-2">
+                          {selectedLead.phone && (
+                            <button
+                              onClick={() => {
+                                window.open(`sms:${selectedLead.phone}?body=${encodeURIComponent(aiResponse)}`, '_blank')
+                              }}
+                              className="flex-1 px-2 py-1.5 bg-blue-500/20 text-blue-400 rounded text-xs hover:bg-blue-500/30 font-medium"
+                            >
+                              📱 Send Text
+                            </button>
+                          )}
                           <button
                             onClick={async () => {
                               await navigator.clipboard.writeText(aiResponse)

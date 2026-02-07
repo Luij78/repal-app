@@ -971,18 +971,25 @@ function LeadsPageInner() {
 
   // AI Rewrite: Clean up and improve notes
   const generateAiRewrite = async (lead: Lead) => {
-    if (!lead.notes) {
+    if (leadNotes.length === 0) {
       setAiResponse('No notes to rewrite!')
       return
     }
     setAiLoading('rewrite')
     setAiResponse(null)
     try {
+      const formattedNotes = leadNotes
+        .slice(0, 10)
+        .map(note => {
+          const date = new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          return `[${date}] ${note.content}`
+        })
+        .join('\n')
       const response = await fetch('/api/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          question: `Rewrite and organize these client notes to be clearer and more professional. Keep all important details, fix any typos, and format with timestamps preserved. DO NOT include any introduction or preamble. DO NOT use any emojis. Just output the rewritten notes directly. Notes: ${lead.notes}`
+          question: `Rewrite and organize these client notes to be clearer and more professional. Keep all important details, fix any typos, and format with timestamps preserved. DO NOT include any introduction or preamble. DO NOT use any emojis. Just output the rewritten notes directly. Notes:\n${formattedNotes}`
         })
       })
       const data = await response.json()
@@ -1999,50 +2006,38 @@ function LeadsPageInner() {
                                   ) : (
                                     <>
                                       <p className="text-sm text-gray-300 leading-relaxed pr-14">{note.content}</p>
-                                      {/* Copy icon - always visible */}
-                                      <button
-                                        onClick={async (e) => {
-                                          e.stopPropagation()
-                                          try {
-                                            await navigator.clipboard.writeText(note.content)
-                                            setToastType('success')
-                                            setImportStatus('Copied to clipboard!')
-                                          } catch {
-                                            setToastType('error')
-                                            setImportStatus('Failed to copy')
-                                          }
-                                        }}
-                                        className="absolute top-2 right-8 w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-all"
-                                        title="Copy note"
-                                      >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                      </button>
-                                      {/* 3-dot menu */}
-                                      <div className="absolute top-2 right-2">
+                                      {/* Action icons - always visible */}
+                                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                                        {/* Copy icon */}
                                         <button
-                                          onClick={() => setNoteMenuOpen(noteMenuOpen === note.id ? null : note.id)}
-                                          className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-300 hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
+                                          onClick={async (e) => {
+                                            e.stopPropagation()
+                                            try {
+                                              await navigator.clipboard.writeText(note.content)
+                                              setToastType('success')
+                                              setImportStatus('Copied to clipboard!')
+                                            } catch {
+                                              setToastType('error')
+                                              setImportStatus('Failed to copy')
+                                            }
+                                          }}
+                                          className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-all"
+                                          title="Copy note"
                                         >
-                                          ⋮
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                          </svg>
                                         </button>
-                                        {noteMenuOpen === note.id && (
-                                          <div className="absolute right-0 top-7 bg-dark-card border border-white/10 rounded-lg shadow-xl z-10 overflow-hidden min-w-[100px]">
-                                            <button
-                                              onClick={() => { setEditingNoteId(note.id); setEditingNoteContent(note.content); setNoteMenuOpen(null); }}
-                                              className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-white/10 transition-colors"
-                                            >
-                                              ✏️ Edit
-                                            </button>
-                                            <button
-                                              onClick={() => deleteLeadNote(note.id)}
-                                              className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
-                                            >
-                                              🗑️ Delete
-                                            </button>
-                                          </div>
-                                        )}
+                                        {/* Edit pencil icon */}
+                                        <button
+                                          onClick={() => { setEditingNoteId(note.id); setEditingNoteContent(note.content); setNoteMenuOpen(null); }}
+                                          className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-all"
+                                          title="Edit note"
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                          </svg>
+                                        </button>
                                       </div>
                                     </>
                                   )}

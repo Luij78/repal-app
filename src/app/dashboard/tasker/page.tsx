@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface Task {
@@ -18,6 +19,12 @@ interface Task {
   created_at: string
 }
 
+interface LeadName {
+  id: string
+  first_name: string
+  last_name: string
+}
+
 const categories = [
   { value: 'followup', label: '📞 Follow-up', color: '#4A9B7F' },
   { value: 'showing', label: '🏠 Showing', color: '#6B8DD6' },
@@ -29,7 +36,9 @@ const categories = [
 
 export default function TaskerPage() {
   const { user } = useUser()
+  const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
+  const [leadNames, setLeadNames] = useState<Record<string, LeadName>>({})
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -64,6 +73,21 @@ export default function TaskerPage() {
       console.error('Error fetching tasks:', error)
     } else {
       setTasks(data || [])
+      
+      // Fetch lead names for tasks linked to leads
+      const leadIds = Array.from(new Set((data || []).filter(t => t.lead_id).map(t => t.lead_id!)))
+      if (leadIds.length > 0) {
+        const { data: leadsData } = await supabase
+          .from('leads')
+          .select('id, first_name, last_name')
+          .in('id', leadIds)
+        
+        if (leadsData) {
+          const namesMap: Record<string, LeadName> = {}
+          leadsData.forEach((l: LeadName) => { namesMap[l.id] = l })
+          setLeadNames(namesMap)
+        }
+      }
     }
     setLoading(false)
   }
@@ -315,9 +339,16 @@ export default function TaskerPage() {
                   {isCompleted && '✓'}
                 </button>
                 
-                <div className="flex-1 min-w-0">
+                <div 
+                  className={`flex-1 min-w-0 ${task.lead_id ? 'cursor-pointer' : ''}`}
+                  onClick={() => {
+                    if (task.lead_id) {
+                      router.push(`/dashboard/leads?lead=${task.lead_id}`)
+                    }
+                  }}
+                >
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className={`font-semibold ${isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>
+                    <h3 className={`font-semibold ${isCompleted ? 'line-through text-gray-500' : 'text-white'} ${task.lead_id ? 'hover:text-primary-400 transition-colors' : ''}`}>
                       {task.title}
                     </h3>
                     <span 
@@ -333,6 +364,12 @@ export default function TaskerPage() {
                       {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                     </span>
                   </div>
+                  {task.lead_id && leadNames[task.lead_id] && (
+                    <p className="text-primary-400 text-sm mt-1 flex items-center gap-1">
+                      <span>👤</span> {leadNames[task.lead_id].first_name} {leadNames[task.lead_id].last_name}
+                      <span className="text-gray-600 text-xs ml-1">→ tap to open lead</span>
+                    </p>
+                  )}
                   {task.description && (
                     <p className="text-gray-400 text-sm mt-1 line-clamp-2">{task.description}</p>
                   )}

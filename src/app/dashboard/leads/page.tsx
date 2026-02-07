@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Lead, Task } from '@/types/database'
 import CsvImportModal from '@/components/CsvImportModal'
@@ -368,6 +369,7 @@ function PricePicker({ value, onChange, placeholder = 'Select' }: PricePickerPro
 
 export default function LeadsPage() {
   const { user } = useUser()
+  const searchParams = useSearchParams()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -633,6 +635,12 @@ export default function LeadsPage() {
       console.error('Error fetching leads:', error)
     } else {
       setLeads(data || [])
+      // Auto-open lead from URL param (e.g. ?lead=<id> from Tasker)
+      const leadParam = searchParams.get('lead')
+      if (leadParam && data) {
+        const target = data.find((l: Lead) => l.id === leadParam)
+        if (target) setSelectedLead(target)
+      }
     }
     setLoading(false)
   }
